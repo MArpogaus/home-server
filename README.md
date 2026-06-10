@@ -1,56 +1,56 @@
 # SecureBlue Deployment (Private)
 
-Dieses Repository enthält private Konfigurationen und Secrets für das SecureBlue-Deployment.
+This repository contains private configurations and secrets for SecureBlue deployment.
 
-## ⚠️ WICHTIG
+## WARNING
 
-**Dieses Repository ist PRIVATE und darf nicht öffentlich sein!**
+**This repository MUST remain PRIVATE and should not be public!**
 
-Es enthält:
-- SSH-Keys für den VM-Zugriff
-- Datenbank-Passwörter
-- GHCR-Authentifizierung
-- Domänen-spezifische Konfigurationen
+It contains:
+- SSH keys for VM access
+- Database passwords
+- GHCR authentication
+- Domain-specific configurations
 
-## Struktur
+## Structure
 
 ```
 deployment-private/
 ├── secrets/
-│   ├── vars.yml           # Private Variablen (nicht committen!)
-│   └── auth.json          # Podman GHCR Login
+│   ├── vars.yml           # Private variables (do not commit!)
+│   └── auth.json          # Podman GHCR login
 ├── inventory/
-│   └── hosts.ini          # Host-Konfiguration
+│   └── hosts.ini          # Host configuration
 ├── ssh/
-│   └── coreos_key         # SSH-Key für VM
-└── deploy.sh              # Deployment-Skript
+│   └── coreos_key         # SSH key for VM
+└── deploy.sh              # Deployment script
 ```
 
-## Einrichtung
+## Setup
 
-1. **Repository klonen** (nur auf vertrauenswürdigen Maschinen):
+1. **Clone repository** (only on trusted machines):
    ```bash
    git clone git@github.com:your-username/deployment-private.git
    cd deployment-private
    ```
 
-2. **Secrets konfigurieren**:
+2. **Configure secrets**:
    ```bash
    cp secrets/vars.yml.example secrets/vars.yml
-   # Bearbeite vars.yml mit deinen Werten
+   # Edit vars.yml with your values
    ```
 
-3. **SSH-Key einrichten**:
+3. **Set up SSH key**:
    ```bash
    ssh-keygen -t ed25519 -f ssh/coreos_key -N ""
    chmod 600 ssh/coreos_key
    ```
 
-4. **GHCR Login**:
+4. **GHCR login**:
    ```bash
    echo $GHCR_TOKEN | podman login ghcr.io -u $GHCR_USERNAME --password-stdin
    podman login ghcr.io -u $GHCR_USERNAME --password-stdin
-   # auth.json wird automatisch erstellt
+   # auth.json will be created automatically
    ```
 
 ## Deployment
@@ -59,24 +59,24 @@ deployment-private/
 ./deploy.sh
 ```
 
-Das Skript führt folgende Schritte aus:
-1. Validiert Secrets
-2. Startet VM (falls nötig)
-3. Führt Ansible Playbook aus
-4. Aktiviert Quadlet Services
-5. Validiert Deployment
+The script performs:
+1. Validate secrets
+2. Start VM (if needed)
+3. Execute Ansible playbook
+4. Activate Quadlet services
+5. Validate deployment
 
-## Secrets Management
+## Secrets management
 
-- **NIEMALS** echte Secrets committen
-- Nutze `secrets/vars.yml` für lokale Entwicklung
-- Für CI/CD: GitHub Secrets verwenden
-- `.gitignore` schützt vor versehentlichem Commit
+- **NEVER** commit real secrets
+- Use `secrets/vars.yml` for local development
+- For CI/CD: use GitHub Secrets
+- `.gitignore` protects against accidental commits
 
 ## Backup
 
-Regelmäßige Backups von `/var/services/snapshots` auf externen Speicher.
+Regular backups of `/var/services/snapshots` to external storage.
 
 ## Troubleshooting
 
-Siehe `../ansible-base/Agent.md` für detaillierte Fehlerbehebung.
+See `../ansible-base/Agent.md` for detailed troubleshooting.
