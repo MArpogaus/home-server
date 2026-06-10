@@ -1,0 +1,13 @@
+# All secrets and private files
+secrets/vars.yml
+secrets/auth.json
+inventory/hosts.ini
+ssh/*
+!.gitkeep
+
+# Logs
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
