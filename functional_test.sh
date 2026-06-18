@@ -104,7 +104,7 @@ check_output "Monitoring subuid" "grep ^monitoring: /etc/subuid" "231072"
 echo "--- Containers ---"
 run_for_user nextcloud "Nextcloud" "nextcloud-db nextcloud-redis nextcloud-app nextcloud-web nextcloud-cron promtail-nc"
 run_for_user proxy "Bunker" "bunker-nginx bunker-scheduler promtail-proxy"
-run_for_user monitoring "Monitoring" "monitoring-loki monitoring-prometheus monitoring-grafana monitoring-node-exporter monitoring-promtail"
+run_for_user monitoring "Monitoring" "monitoring-loki monitoring-prometheus monitoring-grafana monitoring-node-exporter"
 
 echo "--- pg_dumpall Timer ---"
 check_output "pg_dumpall timer enabled" "systemctl is-enabled pg-dumpall.timer" "enabled"
