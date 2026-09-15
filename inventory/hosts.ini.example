@@ -1,10 +1,10 @@
-[coreos]
-coreos ansible_host=host.containers.internal ansible_port=2222 ansible_user=core
+[homeserver]
+coreos ansible_host=127.0.0.1 ansible_port=2222 ansible_user=core
 
-[coreos:vars]
+[homeserver:vars]
 ansible_ssh_private_key_file=ssh/coreos_key
 ansible_become_method=community.general.run0
 ansible_connection=ssh
 
 # If your VM uses a different SSH key or port, adjust above
-# For production deployment, replace host.containers.internal with your server IP
+# For production deployment, replace 127.0.0.1 with your server IP

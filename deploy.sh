@@ -2,9 +2,11 @@
 set -euo pipefail
 
 # SecureBlue Deployment Script
-# Usage: ./deploy.sh [deploy|validate|start]
+# Usage: ./deploy.sh [deploy|validate]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# The VM is a local QEMU guest with SSH forwarded to 2222; override for a real host.
+TARGET_HOST="${TARGET_HOST:-127.0.0.1}"
 ANSIBLE_DIR="${SCRIPT_DIR}/../ansible-base"
 
 echo "=== SecureBlue Deployment ==="
@@ -28,25 +30,29 @@ deploy_ansible() {
     echo "✓ Ansible deployment completed"
 }
 
+# SC2029: the run0/run_as wrappers are built here and must expand on the client
+# side before being sent to the remote shell. That is deliberate.
+# shellcheck disable=SC2029
 validate_deployment() {
-    local ssh_opts="-tt -p 2222 -i ${SCRIPT_DIR}/ssh/coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    local ssh_opts=(-tt -p 2222 -i "${SCRIPT_DIR}/ssh/coreos_key"
+                    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
     local run0="systemd-run --service-type=exec --uid=0 --pty --working-directory=/tmp --wait --collect --"
 
     echo "--- Btrfs subvolumes ---"
-    ssh ${ssh_opts} core@host.containers.internal "${run0} btrfs subvolume list /var/services" 2>&1 | grep -E "^ID|WARNING" || true
+    ssh "${ssh_opts[@]}" "core@${TARGET_HOST}" "${run0} btrfs subvolume list /var/services" 2>&1 | grep -E "^ID|WARNING" || true
 
     echo "--- Podman containers ---"
     for user in nextcloud proxy monitoring; do
         echo "  ${user}:"
-        uid=$(ssh ${ssh_opts} core@host.containers.internal "${run0} id -u ${user}" 2>/dev/null | tail -1)
+        uid=$(ssh "${ssh_opts[@]}" "core@${TARGET_HOST}" "${run0} id -u ${user}" 2>/dev/null | tail -1)
         if [[ -n "${uid}" ]]; then
             local run_as="systemd-run --service-type=exec --uid=${uid} --working-directory=/tmp --wait --collect --"
-            ssh ${ssh_opts} core@host.containers.internal "${run_as} podman ps -a" 2>&1 | grep -v "^$" || true
+            ssh "${ssh_opts[@]}" "core@${TARGET_HOST}" "${run_as} podman ps -a" 2>&1 | grep -v "^$" || true
         fi
     done
 
     echo "--- Snapshot timers ---"
-    ssh ${ssh_opts} core@host.containers.internal "${run0} systemctl list-timers --all" 2>&1 | grep btrfs-snapshot || true
+    ssh "${ssh_opts[@]}" "core@${TARGET_HOST}" "${run0} systemctl list-timers --all" 2>&1 | grep btrfs-snapshot || true
 
     echo "✓ Validation complete"
 }
