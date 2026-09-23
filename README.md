@@ -112,38 +112,67 @@ Three references move by hand:
 
 The controller needs what "Requirements" lists and, for the test VM, what
 `test/README.md`, "Requirements", lists. The commands run from this
-repository:
+repository.
+
+### A new deployment
+
+The Vault password comes first, because the secrets are encrypted with it. Keep
+a copy in a password manager: the secrets, the LUKS passphrase among them, are
+unreadable without it.
 
 ```bash
-cp ../home-server-secrets/ssh/coreos_key{,.pub} test/
-# Terminal 1: the VM, on its serial console
+mkdir -p -m 700 ~/.config/home-server
+(umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
+export ANSIBLE_VAULT_PASSWORD_FILE=~/.config/home-server/vault-password
+```
+
+Terminal 1 starts the VM. `start_vm.py` creates the key pair in `test/`,
+because none is there yet:
+
+```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu
-# Terminal 2, once the VM has rebased and rebooted
+```
+
+Terminal 2 creates the secrets repository from this repository's templates.
+Fill in the values (see "Variables") before the encrypt step:
+
+```bash
+S=../home-server-secrets
+mkdir -p $S/secrets $S/ssh && git -C $S init -q
+cp secrets.example/vars.yml.example $S/secrets/vars.yml
+cp secrets.example/vars.host.yml.example $S/secrets/vars.test.yml
+echo 'secrets/vars*.yml diff=ansible-vault' > $S/.gitattributes
+ansible-vault encrypt $S/secrets/vars.yml $S/secrets/vars.test.yml
+cp test/coreos_key{,.pub} $S/ssh/
+```
+
+Once the VM has rebased and rebooted, deploy and test it:
+
+```bash
 ssh -p 2222 -i test/coreos_key -o IdentitiesOnly=yes \
   core@127.0.0.1 systemctl is-active install-secureblue.service   # inactive
 ./deploy.sh
 ./functional_test.sh
 ```
 
-The VM boots with the key in `test/`, and the scripts log in
-with `ssh/coreos_key` of the secrets repository, so the two hold the same pair.
-`start_vm.py` publishes the VM's ports on `127.0.0.1`. A controller in a
-container reaches the host through another address: start the VM with
-`--listen 0.0.0.0`, or with the host's LAN address, and run the scripts with
-`TEST_VM=1 TARGET_HOST=<that address>`.
+### With an existing secrets repository
 
-A new deployment creates its secrets repository from this repository's
-templates. `start_vm.py` creates a key pair in `test/` when
-none is there, and that pair goes to the secrets repository:
+The VM boots with the key in `test/`, and the scripts log in with
+`ssh/coreos_key` of the secrets repository, so the pair goes to `test/` first:
 
 ```bash
-mkdir -p ../home-server-secrets/secrets ../home-server-secrets/ssh
-cp secrets.example/vars.yml.example ../home-server-secrets/secrets/vars.yml
-cp secrets.example/vars.host.yml.example ../home-server-secrets/secrets/vars.test.yml
-# Fill in the values, then encrypt both files.
-ansible-vault encrypt ../home-server-secrets/secrets/vars.yml ../home-server-secrets/secrets/vars.test.yml
-cp test/coreos_key{,.pub} ../home-server-secrets/ssh/
+cp ../home-server-secrets/ssh/coreos_key{,.pub} test/
+python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
+./deploy.sh && ./functional_test.sh                                   # terminal 2
 ```
+
+### A controller in a container
+
+`start_vm.py` publishes the VM's ports on `127.0.0.1`. A controller in a
+container reaches the host through another address. Start the VM with
+`--listen <address>`, the one host address the container reaches, and run the
+scripts with `TEST_VM=1 TARGET_HOST=<address>`. `--listen 0.0.0.0` also works,
+and it opens the VM's SSH, HTTP and HTTPS to every network the host is on.
 
 Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 
@@ -190,20 +219,12 @@ credential, which travels on ssh stdin.
 ### Vault
 
 Every `secrets/vars*.yml` of the secrets repository that holds a credential is
-encrypted with Ansible Vault. The scripts and `ansible-playbook` read the
-password from `ANSIBLE_VAULT_PASSWORD_FILE`, by default
-`~/.config/home-server/vault-password`. Put the password there once, from the
-password manager:
-
-```bash
-mkdir -p -m 700 ~/.config/home-server
-(umask 077; cat > ~/.config/home-server/vault-password)
-```
-
-Edit a file with `ansible-vault edit secrets/vars.yml`. A new file, such as one
-started from `secrets.example/`, is encrypted once with
-`ansible-vault encrypt secrets/vars.<name>.yml`. For readable diffs, run
-once in the secrets clone:
+encrypted with Ansible Vault. The scripts read the password from
+`ANSIBLE_VAULT_PASSWORD_FILE`, which they default to
+`~/.config/home-server/vault-password`. `ansible-vault` itself has no such
+default, so the shell profile exports the variable. Edit a file with
+`ansible-vault edit secrets/vars.yml`. With the `.gitattributes` line from "A
+new deployment", this shows readable diffs:
 `git config diff.ansible-vault.textconv "ansible-vault view"`.
 
 ## Variables
