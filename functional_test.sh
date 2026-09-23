@@ -148,12 +148,13 @@ check_output "the snapshot pulls in the dump" \
 check_output "pg_dumpall produces a dump" \
   "systemctl start nextcloud-pg-dumpall.service && systemctl is-failed nextcloud-pg-dumpall.service" "inactive"
 # A truncated dump still has bytes, so assert the structure a restore needs.
+LATEST_DUMP="\$(find /var/services/nextcloud/data/db_dumps -name 'dump-*.sql' | sort | tail -1)"
 check_output "dump contains the database and roles" \
-  "grep -lE '^CREATE DATABASE' \$(find /var/services/nextcloud/data/db_dumps -name 'dump-*.sql' | sort | tail -1)" "dump-"
+  "grep -lE '^CREATE DATABASE' ${LATEST_DUMP}" "dump-"
 check_output "dump contains Nextcloud tables" \
-  "grep -cE '^CREATE TABLE.*oc_' \$(find /var/services/nextcloud/data/db_dumps -name 'dump-*.sql' | sort | tail -1)" "^[1-9]"
+  "grep -cE '^CREATE TABLE.*oc_' ${LATEST_DUMP}" "^[1-9]"
 check_output "dump ends cleanly" \
-  "grep -c 'cluster dump complete' \$(find /var/services/nextcloud/data/db_dumps -name 'dump-*.sql' | sort | tail -1)" "^[1-9]"
+  "grep -c 'cluster dump complete' ${LATEST_DUMP}" "^[1-9]"
 
 echo "--- Btrfs Snapshot ---"
 check_output "snapshot service succeeds" \
