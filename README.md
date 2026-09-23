@@ -165,6 +165,10 @@ credential, which travels on ssh stdin.
 | `base_setup_luks_passphrase` | with targets | | One passphrase for every target; keep a copy off the box |
 | `base_setup_iscsi_*` | no | no iSCSI | An iSCSI LUN as a backup target |
 
+The passwords and the ntfy token belong to one host each and go to
+`secrets/vars.<name>.yml`, so the test VM holds throwaway values that no other
+host accepts.
+
 All other settings (PHP sizing, rate limits, image tags) have defaults in
 `defaults/main.yml` of the service roles. Override them here. Memory ceilings
 are `Memory=` lines in each service's Quadlets.
