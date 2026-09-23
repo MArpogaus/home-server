@@ -92,8 +92,8 @@ Open:
   passphrase, and `core` escalates without one. The VM gets the credentials
   of `secrets/vars.test.yml`, which no other host accepts. A VM disk keeps
   the values of every deploy it received, so a disk that received another
-  host's values is deleted. `start_vm.py` publishes its ports on `127.0.0.1`;
-  `--listen` with another address opens them to that network.
+  host's values is deleted. `start_vm.py` publishes its ports on `127.0.0.1`
+  (`README.md`, "A controller in a container", says what `--listen` opens).
 - Without CHAP (`base_setup_iscsi_chap_*`), the NAS admits any device on the
   LAN that claims this host's initiator name. LUKS keeps such a device from
   reading the backups, not from overwriting them.

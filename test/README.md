@@ -19,9 +19,8 @@ python3 start_vm.py --help      # all options
 ```
 
 The guest's SSH is on host port 2222, its HTTP on 8080 and its HTTPS on 8443,
-bound to `127.0.0.1`. The key has no passphrase and `core` is root on the
-guest, so a wider bind hands the guest to the network. `--listen <address>`
-binds another address, such as the one a container on this machine reaches.
+bound to `127.0.0.1`. `--listen <address>` binds another address
+(`../README.md`, "A controller in a container", says what that opens).
 
 The guest gets 8 GB and 2 vCPUs, which match the target thin client. With
 `mkpasswd` installed the console password is `VM_PASSWORD` (default `test`);
