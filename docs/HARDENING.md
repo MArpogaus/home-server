@@ -16,8 +16,7 @@ Done:
   `/proc/<pid>/environ`. Grafana's and ntfy's credentials are environment
   variables, from files the role keeps at `0600`. They are visible to anyone
   who can already run `podman` as that service user. The ntfy token is also in
-  Alertmanager's config, which stays world-readable because that container runs
-  as `nobody`. The `0750` service home keeps it from every other user.
+  Alertmanager's config (`home-server-monitoring/README.md`, "File modes").
 - Every container a Quadlet declares drops all capabilities, sets
   `no-new-privileges` and a pids limit. A pod's infra container keeps Podman's
   default set, because a Quadlet has no key for it.
@@ -125,8 +124,8 @@ SELinux exceptions this project makes, and why:
   and the alert rule ignores them.
 - **Alloy runs as `container_logreader_t`.** container-selinux ships that type
   for a container that reads the host logs, and `/var/log/journal` is
-  `var_log_t`, which it can read. The directory keeps its own label, because
-  relabelling it breaks journald for the whole host.
+  `var_log_t`, which it can read (`home-server-monitoring/README.md`,
+  "Architecture", says why the directory keeps its label).
 
 firewalld's default zone keeps `forward: yes`, which is intra-zone forwarding.
 The host has one interface and the pods use pasta in user space, so nothing is
