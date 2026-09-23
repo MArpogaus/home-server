@@ -9,7 +9,8 @@ README is the entry point for the project.
 The roles make one unprivileged user and one Btrfs subvolume for each service.
 They also set up snapshots, off-box backup and the firewall. They name no
 service: `base_setup_services` in `inventory/group_vars/homeserver.yml` says
-what the host runs, and each service lives in a repository of its own.
+what the host runs, and each service lives in a repository of its own, pinned
+here as a git submodule under `services/`.
 
 The repository also holds the SecureBlue platform files (`platform/`),
 templates for the secrets (`secrets.example/`), the hardening notes
@@ -19,28 +20,25 @@ private repository cloned beside this one.
 
 ## The repos
 
-| Repo | Purpose |
-|---|---|
-| `home-server` | Host setup (Btrfs, users, snapshots, backup, firewall), the playbook, Ignition, the test VM, the inventory and the deploy and test scripts |
-| `home-server-nextcloud` | Nextcloud pod, Ansible role, custom image build |
-| `home-server-bunker` | BunkerWeb reverse proxy pod (WAF, TLS) and role |
-| `home-server-monitoring` | Prometheus, Alertmanager, Grafana, Loki, Alloy, node-exporter, ntfy |
-| `home-server-template` | Skeleton to copy for a new service; "Adding a service" has the checklist |
-| `home-server-secrets` | The credentials and the SSH identities (**private**) |
-| `image-builder-action` | Reusable GitHub Action that builds and signs images; a deploy does not need it |
+| Repository | Where | Purpose |
+|---|---|---|
+| `home-server` | this one | Host setup (Btrfs, users, snapshots, backup, firewall), the playbook, Ignition, the test VM, the inventory and the deploy and test scripts |
+| `home-server-nextcloud` | `services/nextcloud` | Nextcloud pod, Ansible role, custom image build |
+| `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy pod (WAF, TLS) and role |
+| `home-server-monitoring` | `services/monitoring` | Prometheus, Alertmanager, Grafana, Loki, Alloy, node-exporter, ntfy |
+| `home-server-secrets` | `../home-server-secrets` | The credentials, the SSH identities and the host-specific settings and tasks (**private**) |
+| `home-server-template` | anywhere | Skeleton to copy for a new service; "Adding a service" has the checklist |
+| `image-builder-action` | not cloned | Reusable GitHub Action that builds and signs images |
 
-Clone the repositories into one directory, with these names. `site.yml` finds
-each service role at `../home-server-<repo>/ansible-role`, and `deploy.sh`
-finds the credentials at `../home-server-secrets`. `SECRETS_DIR` overrides that
-path.
+Each service repository is a submodule under `services/<repo>`, pinned to one
+commit, so a commit of this repository names every service version it deploys.
+`site.yml` finds each service role at `services/<repo>/ansible-role`, and
+`deploy.sh` refuses to run while a submodule is not checked out. The secrets
+sit beside this repository; `SECRETS_DIR` overrides that path.
 
 ```bash
-git clone https://github.com/MArpogaus/home-server.git            home-server
-git clone https://github.com/MArpogaus/home-server-nextcloud.git  home-server-nextcloud
-git clone https://github.com/MArpogaus/home-server-bunker.git     home-server-bunker
-git clone https://github.com/MArpogaus/home-server-monitoring.git home-server-monitoring
-git clone https://github.com/MArpogaus/home-server-template.git   home-server-template
-git clone <the private secrets repo>                              home-server-secrets
+git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
+git clone <the private secrets repo> home-server-secrets
 ```
 
 ## Architecture
