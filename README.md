@@ -52,9 +52,13 @@ version.
 
 Three references move by hand:
 
-- the SecureBlue image in `home-server-secrets/ignition/secureblue.bu`
+- the SecureBlue signing key, `secureblue-2025.pub` in `platform/secureblue.bu`.
+  The rebase follows the image's `latest` tag, so the image itself does not
+  move by hand.
 - the Fedora CoreOS release in `home-server-core/test/start_vm.py`
-- the Nextcloud majors in the image build
+- the Nextcloud majors: `versions` in `home-server-nextcloud`'s
+  `.github/workflows/build.yml` and the role default
+  `nextcloud_service_app_image`
 
 ## Deploy
 
