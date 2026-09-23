@@ -231,15 +231,12 @@ new deployment", this shows readable diffs:
 | `nextcloud_service_db_password` | yes | | PostgreSQL |
 | `nextcloud_service_admin_password` | yes | | Nextcloud admin |
 | `nextcloud_service_app_image` | no | `ghcr.io/marpogaus/nextcloud:35` | App image |
-| `nextcloud_service_trusted_domains` | no | `cloud.example.com` | Trusted domains, separated by spaces; the first is the public URL |
-| `nextcloud_service_url` | no | `https://<first trusted domain>` | The URL notify_push uses to reach Nextcloud |
-| `bunker_service_server_name` | yes | | Public hostname |
+| `nextcloud_hostname` | yes | | Nextcloud's public hostname; the proxy site and the trusted domain follow from it |
 | `bunker_service_letsencrypt_email` | no | `""` | ACME contact; empty registers `contact@<server name>` |
 | `bunker_service_generate_self_signed_ssl` | no | `no` | `yes` only for a host without public DNS |
 | `bunker_service_auto_lets_encrypt` | no | `yes` | `no` together with the self-signed certificate; the role refuses both set to `yes` |
-| `bunker_service_ntfy_server_name` | no | `""` | The ntfy site, with its own DNS record |
+| `ntfy_hostname` | no | `""` | ntfy's public hostname, with its own DNS record; the site and the ntfy URL follow from it |
 | `monitoring_service_ntfy_password` / `_token` | yes | | The phone's password for user `ntfy`; the token Alertmanager and `deploy.sh` publish with (`tk_` + 29 lowercase alphanumerics) |
-| `monitoring_service_ntfy_base_url` | no | loopback | `https://` and the ntfy hostname |
 | `monitoring_service_grafana_admin_password` | yes | | Grafana `admin`; the role refuses to run without it |
 | `monitoring_service_probe_urls` | on a real host | `[]` | `https://` URLs probed every minute; empty means no public-path alerting |
 | `base_setup_iscsi_*` | no | no iSCSI | An iSCSI LUN as a backup target |
@@ -710,8 +707,8 @@ the real host. The two hosts run the same code. They differ only in
 
 | What | Where |
 |---|---|
-| Nextcloud | `https://<bunker_service_server_name>` |
-| ntfy | `https://<bunker_service_ntfy_server_name>`, user `ntfy` + `monitoring_service_ntfy_password`, topic `alerts` |
+| Nextcloud | `https://<nextcloud_hostname>` |
+| ntfy | `https://<ntfy_hostname>`, user `ntfy` + `monitoring_service_ntfy_password`, topic `alerts` |
 | Grafana | `ssh -L 3000:127.0.0.2:3000 core@host`, then http://localhost:3000, `admin` + `monitoring_service_grafana_admin_password` |
 | Nextcloud direct (BunkerWeb upstream) | `127.0.0.1:8080` on the host, loopback only |
 

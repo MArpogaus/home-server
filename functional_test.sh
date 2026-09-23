@@ -172,7 +172,7 @@ check_loki "Every Loki alert rule evaluates" \
   "^err=0 ok=[1-9]"
 
 echo "--- HTTP/HTTPS ---"
-SERVER_NAME="${SERVER_NAME:-$(read_var bunker_service_server_name)}"
+SERVER_NAME="${SERVER_NAME:-$(read_var nextcloud_hostname)}"
 # DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server:
 # with TLS configured, BunkerWeb redirects HTTP to HTTPS, so 301 is the pass.
 check_output "HTTP redirects to HTTPS" \

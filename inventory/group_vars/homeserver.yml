@@ -13,14 +13,18 @@ base_setup_services:
     # Alloy reads the host journal.
     groups: [systemd-journal]
 
+# The public hostnames are in the secrets; ntfy is optional.
+nextcloud_service_trusted_domains: "{{ nextcloud_hostname }}"
+monitoring_service_ntfy_base_url: >-
+  {{ ('https://' ~ ntfy_hostname) if ntfy_hostname | default('') | length > 0 else 'http://127.0.0.1:8081' }}
+
 # The sites the proxy fronts. home-server-bunker/README.md, "Sites", explains
-# each setting. The hostnames are in the secrets; ntfy is optional.
+# each setting.
 bunker_service_sites: >-
-  {{ [nextcloud_site]
-     + ([ntfy_site] if bunker_service_ntfy_server_name | default('') | length > 0 else []) }}
+  {{ [nextcloud_site] + ([ntfy_site] if ntfy_hostname | default('') | length > 0 else []) }}
 
 nextcloud_site:
-  name: "{{ bunker_service_server_name }}"
+  name: "{{ nextcloud_hostname }}"
   upstream: "http://{{ bunker_service_host_loopback_address }}:8080"
   options:
     REVERSE_PROXY_WS: "yes"
@@ -39,7 +43,7 @@ nextcloud_site:
     - {url: /apps/memories/api/, rate: 8r/s}
 
 ntfy_site:
-  name: "{{ bunker_service_ntfy_server_name }}"
+  name: "{{ ntfy_hostname }}"
   upstream: "http://{{ bunker_service_host_loopback_address }}:8081"
   options:
     REVERSE_PROXY_WS: "yes"

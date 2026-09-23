@@ -40,7 +40,7 @@ deploy_ansible() {
 
 notify() {
     local host token
-    host=$(read_var bunker_service_ntfy_server_name)
+    host=$(read_var ntfy_hostname)
     token=$(read_var monitoring_service_ntfy_token)
     [[ -n "$host" && -n "$token" ]] || return 0
     curl -s -o /dev/null --max-time 10 -K <(printf 'header = "Authorization: Bearer %s"\n' "${token}") \

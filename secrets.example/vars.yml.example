@@ -4,7 +4,8 @@
 # host shares this file. Credentials and host-only values go to
 # vars.<TARGET_NAME>.yml.
 
-bunker_service_server_name: cloud.example.com
-nextcloud_service_trusted_domains: cloud.example.com
-# The ntfy site needs its own DNS record.
-bunker_service_ntfy_server_name: ""
+# The public hostnames. The proxy sites, the trusted domain and the ntfy URL
+# follow from them.
+nextcloud_hostname: cloud.example.com
+# The ntfy site needs its own DNS record. Empty: no ntfy site.
+ntfy_hostname: ""
