@@ -1,8 +1,7 @@
 # Design notes
 
 Why this repository's roles are shaped as they are. The READMEs say how to use
-them. The hardening status of a deployment is not here: it describes one host,
-so it lives with that host's private configuration.
+them. `docs/HARDENING.md` has the hardening status.
 
 ## Why it is built this way
 
