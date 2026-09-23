@@ -201,6 +201,7 @@ rebases to SecureBlue, removes itself and reboots.
    P=../platform/secureblue.bu
    ./build.sh --platform $P ign         # render config.ign only; read it
    ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
+   cd ..
    ```
 
    `./build.sh --platform $P install /dev/sdX` writes a disk attached to this
@@ -217,7 +218,7 @@ rebases to SecureBlue, removes itself and reboots.
    unit is done:
    `ssh core@<host> systemctl is-active install-secureblue.service` prints
    `inactive`.
-5. Record the host key (see "Deploy"), put the host's values in
+5. Record the host key (see "Script settings"), put the host's values in
    `secrets/vars.<name>.yml`, and deploy an empty host:
 
    ```bash
