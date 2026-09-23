@@ -172,6 +172,8 @@ container reaches the host through another address. Start the VM with
 scripts with `TEST_VM=1 TARGET_HOST=<address>`. `--listen 0.0.0.0` also works,
 and it opens the VM's SSH, HTTP and HTTPS to every network the host is on.
 
+### Script settings
+
 Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 
 | Variable | Default | Selects |
