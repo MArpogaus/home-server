@@ -60,16 +60,16 @@
              | dict2items | selectattr('key', 'search', '_image$')
              | map(attribute='value') | select('string') | list)
             + (hostvars[inventory_hostname] | dict2items
-               | selectattr('key', 'search', '^' ~ svc.repo ~ '_service_.*_image$')
+               | selectattr('key', 'search', '^' ~ svc.name ~ '_service_.*_image$')
                | map(attribute='value') | select('string') | list))
            | map('regex_replace', '@[^@]*$', '') | map('regex_replace', ':[^:/]+$', '') | list }}
   vars:
     base_setup_role_defaults: >-
-      {{ svc.dir }}/ansible-role/{{ svc.repo }}_service/defaults/main.yml
+      {{ svc.dir }}/ansible-role/{{ svc.name }}_service/defaults/main.yml
   loop: "{{ base_setup_services }}"
   loop_control:
     loop_var: svc
-    label: "{{ svc.repo }}"
+    label: "{{ svc.name }}"
 
 # A policy scope matches by prefix, so a registry or namespace alone would
 # accept every image below it.

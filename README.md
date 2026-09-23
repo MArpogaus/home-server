@@ -30,9 +30,9 @@ private repository cloned beside this one.
 | `home-server-template` | anywhere | Skeleton to copy for a new service; "Adding a service" has the checklist |
 | `image-builder-action` | not cloned | Reusable GitHub Action that builds and signs images |
 
-Each service repository is a submodule under `services/<repo>`, pinned to one
+Each service repository is a submodule under `services/<name>`, pinned to one
 commit, so a commit of this repository names every service version it deploys.
-`site.yml` finds each service role at `services/<repo>/ansible-role`, and
+`site.yml` finds each service role at `services/<name>/ansible-role`, and
 `deploy.sh` refuses to run while a submodule is not checked out. The secrets
 sit beside this repository; `SECRETS_DIR` overrides that path.
 
@@ -372,8 +372,8 @@ for what differs.
        uid: 1003
    ```
 
-   `repo` names the submodule `services/<repo>` and defaults to `name`. A
-   service's `uid` never changes after its first deploy. It sets the subuid
+   The name is also the submodule `services/<name>`, the role prefix
+   `<name>_service_`, the Linux user and the pod. A service's `uid` never changes after its first deploy. It sets the subuid
    range, and every image layer and data file of the service is owned inside
    that range.
 3. For a public service, define `<name>_site` in the same file like
@@ -401,7 +401,7 @@ for what differs.
 
 An image that this project's cosign key does not sign needs nothing further.
 `base_setup` reads every `*_image` default of every service role, and every
-`<repo>_service_*_image` variable the deployment sets for this host, and writes
+`<name>_service_*_image` variable the deployment sets for this host, and writes
 each repository into the signature policy. The policy keeps the image's own
 entries and sets the default to `reject`, so a repository that no role declares
 does not pull, whatever default the OS image ships.
@@ -558,7 +558,7 @@ run0 --user=nextcloud -- bash -c 'podman ps'
 run0 --user=nextcloud -- systemctl --user status nc-pod.service
 ```
 
-Replace `nextcloud` with `proxy` or `monitoring`. A root command is
+Replace `nextcloud` with `bunker` or `monitoring`. A root command is
 `run0 <command>`.
 
 ### Adding a backup target

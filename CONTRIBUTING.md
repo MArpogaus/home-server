@@ -28,18 +28,18 @@ previous release and a link that compares the two tags.
 
 ## Services and their pins
 
-Each service repository is a submodule under `services/<repo>`. Work on a
+Each service repository is a submodule under `services/<name>`. Work on a
 service inside its submodule:
 
 ```bash
-git -C services/<repo> switch dev          # a submodule checks out a commit
-# edit, then commit and push in services/<repo> as in its own CONTRIBUTING.md
-git add services/<repo>                    # move the pin here
-git commit -m "chore: pin home-server-<repo> to <short sha>"
+git -C services/<name> switch dev          # a submodule checks out a commit
+# edit, then commit and push in services/<name> as in its own CONTRIBUTING.md
+git add services/<name>                    # move the pin here
+git commit -m "chore: pin home-server-<name> to <short sha>"
 ```
 
 A release of this repository pins released services. Tag the service
-repository first, check that tag out in `services/<repo>`, commit the pin
+repository first, check that tag out in `services/<name>`, commit the pin
 here, and then release this repository as in "Releases".
 
 ## House style

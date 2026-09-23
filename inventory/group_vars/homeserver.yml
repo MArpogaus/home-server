@@ -5,9 +5,8 @@
 base_setup_services:
   - name: nextcloud
     uid: 82
-  - name: proxy
+  - name: bunker
     uid: 1001
-    repo: bunker
   - name: monitoring
     uid: 1002
     # Alloy reads the host journal.
