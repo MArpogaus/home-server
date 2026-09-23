@@ -7,7 +7,7 @@ groups:
           sum by (unit) (
             count_over_time(
               {job="systemd-journal", syslog_identifier="systemd", emitter_uid="0", unit=~"btrfs-(backup|snapshot)@.*\\.service"}
-                |~ "(?i)failed with result" [6h]
+                |~ "(?i)failed with result|dependency failed for" [6h]
             )
           ) > 0
         for: 5m
