@@ -143,9 +143,9 @@ check_output "status.php answers on 8080" "curl -sf http://127.0.0.1:8080/status
 
 echo "--- pg_dumpall ---"
 check_output "the snapshot pulls in the dump" \
-  "systemctl show btrfs-snapshot@nextcloud.service -p Wants -p After" "pg-dumpall.service"
+  "systemctl show btrfs-snapshot@nextcloud.service -p Wants -p After" "nextcloud-pg-dumpall.service"
 check_output "pg_dumpall produces a dump" \
-  "systemctl start pg-dumpall.service && systemctl is-failed pg-dumpall.service" "inactive"
+  "systemctl start nextcloud-pg-dumpall.service && systemctl is-failed nextcloud-pg-dumpall.service" "inactive"
 # A truncated dump still has bytes, so assert the structure a restore needs.
 check_output "dump contains the database and roles" \
   "grep -lE '^CREATE DATABASE' \$(find /var/services/nextcloud/data/db_dumps -name 'dump-*.sql' | sort | tail -1)" "dump-"

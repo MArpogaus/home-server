@@ -104,12 +104,13 @@ highest precedence, so no inventory can shadow one. If the ntfy site is
 configured, `deploy.sh` posts "Deploy to `<host>` succeeded" or "FAILED" to the
 topic with the token.
 
-`functional_test.sh` does real work on the target. It starts `pg-dumpall` and a
-Btrfs snapshot, and a finished snapshot starts a backup to every target and,
-when an update is staged, the reboot after it. It makes eight failed SSH logins
-to prove that an alert fires, and publishes one message to the `alerts` topic,
-which reaches the phone with the title `agent`. It reads Loki through Grafana's
-datasource proxy with the Grafana admin credential, which travels on ssh stdin.
+`functional_test.sh` does real work on the target. It starts
+`nextcloud-pg-dumpall` and a Btrfs snapshot, and a finished snapshot starts a
+backup to every target and, when an update is staged, the reboot after it. It
+makes eight failed SSH logins to prove that an alert fires, and publishes one
+message to the `alerts` topic, which reaches the phone with the title `agent`.
+It reads Loki through Grafana's datasource proxy with the Grafana admin
+credential, which travels on ssh stdin.
 
 ## Variables
 
@@ -345,7 +346,7 @@ run0 blkid -s UUID -o value /dev/sdX      # the value for the target list
 ### When a backup fails
 
 ```bash
-run0 systemctl status pg-dumpall.service 'btrfs-backup@*.service' 'btrfs-snapshot@*.service'
+run0 systemctl status nextcloud-pg-dumpall.service 'btrfs-backup@*.service' 'btrfs-snapshot@*.service'
 run0 journalctl -u btrfs-backup@<name>.service -n 20
 ```
 
