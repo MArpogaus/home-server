@@ -98,7 +98,7 @@ Open:
   pattern that matches text a client controls hides that client's lines, so
   each pattern is anchored to a field the service writes itself.
 - Git history, unreferenced GitHub objects and other clones can hold
-  plaintext credentials. Every value that was ever plaintext is rotated. A
+  plaintext credentials; rotate every value that was ever plaintext. A
   LUKS header backup accepts every passphrase its key slots held when it was
   taken.
 
