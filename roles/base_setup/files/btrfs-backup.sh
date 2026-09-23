@@ -46,29 +46,24 @@ chcon -t container_file_t "${DEST}" || echo "WARNING: cannot label ${DEST}" >&2
 copied=0
 refused=0
 for src in "${SNAP_DIR}"/*/; do
-	[ -d "${src}" ] || continue
 	svc="$(basename "${src}")"
 	mkdir -p "${DEST}/${svc}"
 
 	# A partial receive leaves at most one unreceived copy. More than one means
 	# the test is wrong, so nothing of this service is deleted.
-	unreceived=0
+	partial=()
 	for snap in "${DEST}/${svc}"/????-??-??; do
 		[ -d "${snap}" ] || continue
-		received "${snap}" || unreceived=$((unreceived + 1))
+		received "${snap}" || partial+=("${snap}")
 	done
-	if [ "${unreceived}" -gt 1 ]; then
-		echo "ERROR: ${unreceived} backups of ${svc} look unreceived; refusing to delete" >&2
+	if [ "${#partial[@]}" -gt 1 ]; then
+		echo "ERROR: ${#partial[@]} backups of ${svc} look unreceived; refusing to delete" >&2
 		refused=1
 		continue
 	fi
-
-	for snap in "${DEST}/${svc}"/????-??-??; do
-		[ -d "${snap}" ] || continue
-		if ! received "${snap}"; then
-			btrfs subvolume delete "${snap}" || rm -rf "${snap}"
-			echo "Deleted partial backup: ${snap}"
-		fi
+	for snap in "${partial[@]}"; do
+		btrfs subvolume delete "${snap}" || rm -rf "${snap}"
+		echo "Deleted partial backup: ${snap}"
 	done
 
 	latest="$(snapshots "${src}" | tail -n1)"
