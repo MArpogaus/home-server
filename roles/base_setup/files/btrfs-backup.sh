@@ -5,8 +5,6 @@ set -euo pipefail
 shopt -s nullglob
 
 TARGET="${1:?target name not given}"
-# shellcheck source=/dev/null
-. "/etc/btrfs-backup/${TARGET}.conf"
 
 SNAP_DIR="${BTRFS_SNAPSHOT_DIR:?}"
 DEST="${BACKUP_ROOT:?}/${TARGET}"

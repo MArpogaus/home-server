@@ -347,7 +347,7 @@ default. The ones whose default is not the whole story:
 
 | Var | Note |
 |---|---|
-| `base_setup_backup_targets` | `[]` means no off-box backup. Removing a target from the list is manual: delete `/etc/btrfs-backup/<name>.conf`, `/var/lib/node-textfile/backup-<name>.prom` and its crypttab and fstab lines on the host |
+| `base_setup_backup_targets` | `[]` means no off-box backup. Removing a target from the list is manual: delete `/var/lib/node-textfile/backup-<name>.prom` and its crypttab and fstab lines on the host |
 | `base_setup_iscsi_portal` | Set: the deploy logs in to the iSCSI target, with or without a backup target |
 | `base_setup_luks_passphrase` | Required as soon as a backup target is set; one passphrase for every target |
 
@@ -491,10 +491,9 @@ base_setup_luks_passphrase: "<one passphrase for every target>"
 base_setup_backup_targets:
   - uuid: 7f3c8e2a-...      # UUID of the LUKS container
     name: usb
-    retention_days: 30
   - uuid: a91b4d17-...
     name: nas
-    retention_days: 180
+base_setup_backup_retention_days: 180   # every target keeps this many days
 ```
 
 The UUID of the LUKS container identifies each target. Thus a disk continues
@@ -617,7 +616,7 @@ run0 journalctl -u btrfs-backup@<name>.service -n 20
   For iSCSI, `run0 iscsiadm -m session` shows whether the session exists.
 - **The target is full.** `btrfs send` fails with "No space left on device". The
   received subvolumes stay valid. Read
-  `run0 btrfs filesystem usage /var/backup/<name>`. Lower `retention_days`, or
+  `run0 btrfs filesystem usage /var/backup/<name>`. Lower `base_setup_backup_retention_days`, or
   grow the LUN and run `run0 cryptsetup resize backup-<name>` and
   `run0 btrfs filesystem resize max /var/backup/<name>`. Delete a received
   subvolume with `btrfs subvolume delete`, never with `rm -rf`.

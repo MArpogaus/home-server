@@ -268,27 +268,12 @@
   ansible.builtin.include_tasks: backup_target.yml
   when: base_setup_iscsi_portal | length > 0
 
-- name: Ensure the backup target directories exist
+# node-exporter needs search here to stat each mounted target.
+- name: Ensure the backup root exists
   ansible.builtin.file:
-    path: "{{ item.path }}"
+    path: "{{ base_setup_backup_root }}"
     state: directory
-    mode: "{{ item.mode }}"
-  loop:
-    - {path: /etc/btrfs-backup, mode: "0700"}
-    # node-exporter needs search here to stat each mounted target.
-    - {path: "{{ base_setup_backup_root }}", mode: "0711"}
-  loop_control:
-    label: "{{ item.path }}"
-
-- name: Write a config file per backup target
-  ansible.builtin.template:
-    src: backup-target.conf.j2
-    dest: "/etc/btrfs-backup/{{ item.name }}.conf"
-    owner: root
-    mode: "0600"
-  loop: "{{ base_setup_backup_targets }}"
-  loop_control:
-    label: "{{ item.name }}"
+    mode: "0711"
 
 - name: Seed the backup metrics
   ansible.builtin.copy:

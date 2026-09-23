@@ -81,17 +81,11 @@ run_case() {
 	local desc="$1" want_rc="$2" want_left="$3" want_name="${5-}" want_err="${6-}"
 	local root out rc=0 left named=ok
 	root="$(mktemp -d)"
-	mkdir -p "${root}/bin" "${root}/snap" "${root}/backup" "${root}/etc"
+	mkdir -p "${root}/bin" "${root}/snap" "${root}/backup"
 	make_stub "${root}/bin"
-	cat >"${root}/etc/t.conf" <<EOF
-BTRFS_SNAPSHOT_DIR=${root}/snap
-BACKUP_ROOT=${root}/backup
-RETENTION_DAYS=90
-NODE_TEXTFILE_DIR=${root}
-EOF
 	"${4}" "${root}"   # the case's own setup
 	out="$(PATH="${root}/bin:${PATH}" bash -c \
-		"cd ${root} && sed 's|/etc/btrfs-backup/|${root}/etc/|' ${SCRIPT} > ${root}/s.sh && bash ${root}/s.sh t" 2>&1)" || rc=$?
+		"cd ${root} && BTRFS_SNAPSHOT_DIR=${root}/snap BACKUP_ROOT=${root}/backup RETENTION_DAYS=90 NODE_TEXTFILE_DIR=${root} bash ${SCRIPT} t" 2>&1)" || rc=$?
 	left="$(find "${root}/backup" -mindepth 3 -maxdepth 3 -type d | wc -l)"
 	if [[ -n "${want_name}" && ! -d "${root}/backup/t/svc/${want_name}" ]]; then
 		named="missing ${want_name}"
