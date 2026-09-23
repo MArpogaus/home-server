@@ -9,11 +9,11 @@
           {{ base_setup_services | map(attribute='name') | map('community.general.dict_kv', 'repo')
              | zip(base_setup_services) | map('combine') | list }}
 
-    - name: Locate each service repository beside this one
+    - name: Locate each service repository in services/
       ansible.builtin.set_fact:
         base_setup_services: >-
           {{ base_setup_services | map(attribute='repo')
-             | map('regex_replace', '^', playbook_dir ~ '/services/') | map('realpath')
+             | map('regex_replace', '^', playbook_dir ~ '/services/')
              | map('community.general.dict_kv', 'dir') | zip(base_setup_services) | map('combine') | list }}
 
     - name: Run what this host needs before the base setup
