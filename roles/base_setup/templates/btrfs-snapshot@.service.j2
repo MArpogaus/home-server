@@ -1,9 +1,6 @@
 [Unit]
 Description=Btrfs read-only snapshot of @%i
-{% if base_setup_backup_targets | length > 0 %}
-OnSuccess={% for t in base_setup_backup_targets %}btrfs-backup@{{ t.name }}.service {% endfor %}
-
-{% endif %}
+OnSuccess={{ base_setup_backup_targets | map(attribute='name') | map('regex_replace', '^(.+)$', 'btrfs-backup@\\1.service') | join(' ') }}
 
 [Service]
 Type=oneshot

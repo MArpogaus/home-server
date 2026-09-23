@@ -1,8 +1,7 @@
 [Unit]
 Description=Incremental btrfs send of service snapshots to backup target %i
 RequiresMountsFor={{ base_setup_backup_root }}/%i
-After={% for s in base_setup_services %}btrfs-snapshot@{{ s.name }}.service {% endfor %}
-
+After={{ base_setup_services | map(attribute='name') | map('regex_replace', '^(.+)$', 'btrfs-snapshot@\\1.service') | join(' ') }}
 OnSuccess=auto-reboot-staged.service
 
 [Service]
