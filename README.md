@@ -155,6 +155,7 @@ credential, which travels on ssh stdin.
 | `bunker_service_server_name` | yes | | Public hostname |
 | `bunker_service_letsencrypt_email` | no | `""` | ACME contact; empty registers `contact@<server name>` |
 | `bunker_service_generate_self_signed_ssl` | no | `no` | `yes` only for a host without public DNS |
+| `bunker_service_auto_lets_encrypt` | no | `yes` | `no` together with the self-signed certificate; the role refuses both set to `yes` |
 | `bunker_service_ntfy_server_name` | no | `""` | The ntfy site, with its own DNS record |
 | `monitoring_service_ntfy_password` / `_token` | yes | | The phone's password for user `ntfy`; the token Alertmanager and `deploy.sh` publish with (`tk_` + 29 lowercase alphanumerics) |
 | `monitoring_service_ntfy_base_url` | no | loopback | `https://` and the ntfy hostname |
