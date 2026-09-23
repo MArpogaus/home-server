@@ -93,7 +93,7 @@ Open:
   the values of every deploy it received, so a disk that received another
   host's values is deleted. `start_vm.py` publishes its ports on `127.0.0.1`
   (`README.md`, "A controller in a container", says what `--listen` opens).
-- Without CHAP (`base_setup_iscsi_chap_*`), the NAS admits any device on the
+- Without CHAP, the NAS admits any device on the
   LAN that claims this host's initiator name. LUKS keeps such a device from
   reading the backups, not from overwriting them.
 - A service repository's `monitoring/alloy-drop.txt` drops lines of that

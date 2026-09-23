@@ -35,6 +35,4 @@ monitoring_service_probe_urls: []
 # Real hardware only: the backup target.
 # base_setup_iscsi_portal: ""
 # base_setup_iscsi_target: ""
-# base_setup_iscsi_chap_user: ""
-# base_setup_iscsi_chap_password: ""
 # base_setup_luks_passphrase: ""
