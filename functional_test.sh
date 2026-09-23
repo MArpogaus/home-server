@@ -238,14 +238,9 @@ check_output "The textfile metrics are scraped" \
 check_output "Every Prometheus alert rule evaluates" \
   "curl -sf http://127.0.0.2:9090/api/v1/rules | ${RULES_HEALTH}" \
   "^err=0 ok=[1-9]"
-# Only when probe URLs are configured; the default list is empty and then
-# min() over no series returns nothing, which is not a failure.
-# read_var prints the Python repr, so an explicit empty YAML list is the
-# two-character string "[]" rather than nothing.
-if [[ ! "$(read_var monitoring_service_probe_urls)" =~ ^(\[\])?$ ]]; then
-  check_output "Blackbox probes succeed" \
-    "curl -sf 'http://127.0.0.2:9090/api/v1/query?query=min(probe_success)'" '"1"\]'
-fi
+# A host without probe URLs has no probe_success series and reads 1.
+check_output "Blackbox probes succeed" \
+  "curl -sfG http://127.0.0.2:9090/api/v1/query --data-urlencode 'query=min(probe_success) or vector(1)'" '"1"\]'
 
 echo "--- Capabilities ---"
 # SYS_CHROOT is in Podman's default set and no container adds it back, so
