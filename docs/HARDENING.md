@@ -44,9 +44,8 @@ Done:
 - `ip_unprivileged_port_start=80` lets any unprivileged local user bind 80
   and 443, not just the proxy. The proxy holds both permanently, so the window
   is a reboot. The alternative is `CAP_NET_BIND_SERVICE` on the proxy pod.
-- Nextcloud publishes 8080 on loopback only. The proxy reaches it through
-  pasta's host-loopback mapping. firewalld refuses the port from the LAN
-  anyway, so this is defence in depth.
+- Nextcloud publishes 8080 on loopback only (`home-server-bunker/README.md`,
+  "How the proxy reaches the other pods").
 - SSH accepts the hardware-backed key and no password. Root login is off.
   securecore sets `AllowTcpForwarding no`. `platform/secureblue.yml` gives the
   admin user `local` forwarding back and nothing else, because Grafana is
