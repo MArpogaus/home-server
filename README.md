@@ -183,11 +183,10 @@ rebases to SecureBlue, removes itself and reboots.
 1. Point DNS at the public address of the machine. Forward ports 80 and 443
    from the router, and no other port. Let's Encrypt validates over port 80,
    so TLS works only after the record resolves from the internet.
-2. Boot the unmodified live ISO on the target once and read the disk name:
-   `lsblk -dno NAME,SIZE,MODEL` and `ls -l /dev/disk/by-id/ | grep -v part`.
-   If a USB stick is attached during the install, use the
-   `/dev/disk/by-id/ata-<model>_<serial>` path, because the stick can take
-   the name `sda`.
+2. Boot the unmodified live ISO on the target once and read the stable name of
+   the target disk: `ls -l /dev/disk/by-id/ | grep -v part`. The install
+   stick is attached during the install and can take a name such as `sda`, so
+   the command below names the disk by id.
 3. Plug in the YubiKey, then build:
 
    ```bash
@@ -197,7 +196,8 @@ rebases to SecureBlue, removes itself and reboots.
      "$INSTALLER" download -s stable -p metal -f iso
    P=../platform/secureblue.bu
    ./build.sh --platform $P ign         # render config.ign only; read it
-   ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
+   ./build.sh --platform $P iso fedora-coreos-<version>-live-iso.x86_64.iso \
+     /dev/disk/by-id/ata-<model>_<serial>
    cd ..
    ```
 
@@ -210,15 +210,18 @@ rebases to SecureBlue, removes itself and reboots.
 
    CAUTION: `install.iso` installs onto the named device of the target and
    reboots, with no prompt. It erases that disk.
-4. Boot the stick. The machine installs Fedora CoreOS, rebases to SecureBlue
+4. Write the installer to a USB stick, `/dev/<stick>` on this computer:
+   `sudo dd if=ignition/install.iso of=/dev/<stick> bs=4M conv=fsync`. Boot
+   the target from the stick. The machine installs Fedora CoreOS, rebases to SecureBlue
    and reboots. SSH answers throughout. The host is ready when the first-boot
    unit is done:
    `ssh core@<host> systemctl is-active install-secureblue.service` prints
    `inactive`.
 5. Record the host key (see "Script settings"). Copy
-   `secrets.example/vars.host.yml.example` to `secrets/vars.<name>.yml`, fill
-   in the host's values, delete the two certificate lines that only a host
-   without public DNS keeps, encrypt the file, and deploy an empty host:
+   `secrets.example/vars.host.yml.example` to
+   `../home-server-secrets/secrets/vars.<name>.yml`, fill in the host's values,
+   delete the two certificate lines that only a host without public DNS keeps,
+   encrypt it with `ansible-vault encrypt`, and deploy an empty host:
 
    ```bash
    TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./deploy.sh
