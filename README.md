@@ -232,7 +232,7 @@ The script deletes these subvolumes before it looks for work. Thus it never
 counts a partial copy as complete. It never uses a partial copy as an
 incremental parent.
 
-The script reads the sender UUID from `btrfs subvolume show` to decide if a
+The script reads the `Received UUID` from `btrfs subvolume show` to decide if a
 copy on the target is complete. A wrong answer there deletes a good backup.
 Two guards limit that risk. First, the script treats output without the field
 as complete. Second, more than one unreceived copy of one service skips that
@@ -423,7 +423,7 @@ run0 systemctl start "user@$(id -u nextcloud).service"
 ```
 
 - `-f` is needed, because btrfs refuses to clear the read-only flag while the
-  sender UUID is set.
+  `Received UUID` is set.
 - A send does not carry the nested `custom_apps`, so it is created again. The
   next deploy downloads the apps and the Recognize models into it.
 - `restorecon -R` is needed: a received subvolume carries the labels it had at
