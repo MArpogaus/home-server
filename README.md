@@ -239,9 +239,9 @@ Replace `nextcloud` with `proxy` or `monitoring`. A root command is
 ### Installing the real host
 
 `home-server-core/ignition/` holds one Butane template for the test VM and the
-real hardware. It sets up the Btrfs root, the SSH key, the cosign policy, the
-polkit rule that lets `run0` escalate without a password, and a first-boot unit
-that layers python3 when the image has none.
+real hardware. It sets up the Btrfs root, the SSH key, the cosign public key,
+the polkit rule that lets `run0` escalate without a password, and a first-boot
+unit that layers python3 when the image has none.
 `PLATFORM_BU=<absolute path>/home-server-secrets/ignition/secureblue.bu` adds
 the unit that rebases to SecureBlue, removes itself and reboots.
 
