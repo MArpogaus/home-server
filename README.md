@@ -114,7 +114,7 @@ Grafana admin credential, which travels on ssh stdin.
 | `nextcloud_service_db_password` | yes | | PostgreSQL |
 | `nextcloud_service_admin_password` | yes | | Nextcloud admin |
 | `nextcloud_service_app_image` | no | `ghcr.io/marpogaus/nextcloud:35` | App image |
-| `nextcloud_service_trusted_domains` | no | `cloud.example.com` | Trusted domains |
+| `nextcloud_service_trusted_domains` | no | `cloud.example.com` | Trusted domains, separated by spaces; the first is the public URL |
 | `nextcloud_service_url` | no | `https://<first trusted domain>` | The URL notify_push uses to reach Nextcloud |
 | `bunker_service_server_name` | yes | | Public hostname |
 | `bunker_service_letsencrypt_email` | no | `""` | ACME contact; empty registers `contact@<server name>` |
