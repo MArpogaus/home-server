@@ -76,8 +76,7 @@ that starts before python3 exists fails with
 `/usr/bin/python3: No such file or directory`. A fragment whose image ships
 python3 disables `install-python.service`.
 
-`../deploy.sh` and `../functional_test.sh` honour `TARGET_HOST` and
-`TARGET_PORT`.
+`../README.md`, "Script settings", lists how the scripts reach the VM.
 
 `coreos_key` is the SSH identity baked into the Ignition config. `../README.md`,
 "Deploy", says where the deployment finds it.
