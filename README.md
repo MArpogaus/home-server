@@ -198,8 +198,9 @@ incremental parent.
 The script reads the sender UUID from `btrfs subvolume show` to decide if a
 copy on the target is complete. A wrong answer there deletes a good backup.
 Two guards limit that risk. First, the script treats output without the field
-as complete. Second, more than one unreceived copy of one service stops the
-run, because an interrupted receive leaves at most one such copy.
+as complete. Second, more than one unreceived copy of one service skips that
+service and fails the run, because an interrupted receive leaves at most one
+such copy. The other services still get their backup.
 
 CAUTION: Keep `base_setup_luks_passphrase` on a different machine. One
 passphrase opens each target. Without the passphrase, you cannot read a
