@@ -339,9 +339,9 @@ has a fixed format:
 echo "tk_$(openssl rand -hex 15 | cut -c1-29)"
 ```
 
-### Platform variables
+### base_setup variables
 
-`roles/base_setup/defaults/main.yml` holds every platform variable and its
+`roles/base_setup/defaults/main.yml` holds every base_setup variable and its
 default. The ones whose default is not the whole story:
 
 | Var | Note |
