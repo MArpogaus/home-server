@@ -177,8 +177,9 @@ SERVER_NAME="${SERVER_NAME:-$(read_var nextcloud_hostname)}"
 # with TLS configured, BunkerWeb redirects HTTP to HTTPS, so 301 is the pass.
 check_output "HTTP redirects to HTTPS" \
   "curl -s -o /dev/null -w %{http_code} -H 'Host: ${SERVER_NAME}' http://127.0.0.1:80" "30[18]"
-# status.php, not /, which redirects to /login. Proves TLS, WAF, proxy, nginx,
-# php-fpm and the database in one request. A wrong upstream address gives 502.
+# status.php, not /, which redirects to /login. Proves TLS, the proxy's site,
+# nginx, php-fpm and the database in one request; 127.0.0.1 is on BunkerWeb's
+# whitelist, so the WAF checks are not part of it. A wrong upstream gives 502.
 check_output "HTTPS reaches Nextcloud through the proxy" \
   "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/status.php" \
   '"installed":true'
