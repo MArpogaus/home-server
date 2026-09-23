@@ -1,7 +1,7 @@
 ---
 # What this deployment runs. base_setup configures a host; this says what the
 # host is for, so the role carries no service names of its own.
-# A uid never changes: home-server-core/README.md, "Adding a service".
+# A uid never changes: README.md, "Adding a service".
 base_setup_services:
   - name: nextcloud
     uid: 82

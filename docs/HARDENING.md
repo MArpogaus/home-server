@@ -55,7 +55,7 @@ Done:
   reachable only through a tunnel.
 - Alerts for container failure, failed backups, host resources and security
   events, delivered to a phone through ntfy. The alert tables in the READMEs of
-  `home-server-core`, `home-server-monitoring`, `home-server-nextcloud` and
+  `home-server`, `home-server-monitoring`, `home-server-nextcloud` and
   `home-server-bunker` list them.
 - Every file in the secrets repository's `secrets/` that holds a credential is
   encrypted with Ansible Vault (AES256). The vault password is a file outside

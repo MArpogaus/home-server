@@ -5,7 +5,7 @@ Butane fragment, so the guest runs the same platform steps as the real host,
 such as a rebase to a derivative image:
 
 ```bash
-python3 start_vm.py --fresh --platform ../../home-server-deploy/platform/secureblue.bu
+python3 start_vm.py --fresh --platform ../platform/secureblue.bu
 ```
 
 ## Use
@@ -30,7 +30,7 @@ without it the guest has none.
 The Ignition config comes from `../ignition/build.sh`, the same renderer the
 real hardware uses.
 
-Then deploy against it from `home-server-deploy/`, as its README describes.
+Then deploy against it as `../README.md`, "Deploy", describes.
 
 ## Resetting between test runs
 
@@ -77,11 +77,11 @@ that starts before python3 exists fails with
 `/usr/bin/python3: No such file or directory`. A fragment whose image ships
 python3 disables `install-python.service`.
 
-`deploy.sh` and `functional_test.sh` in `home-server-deploy/` honour
-`TARGET_HOST` and `TARGET_PORT`.
+`../deploy.sh` and `../functional_test.sh` honour `TARGET_HOST` and
+`TARGET_PORT`.
 
-`coreos_key` is the SSH identity baked into the Ignition config. The deploy
-README, "Deploy", says where the deployment finds it.
+`coreos_key` is the SSH identity baked into the Ignition config. `../README.md`,
+"Deploy", says where the deployment finds it.
 
 `./test_btrfs_backup.sh` runs `roles/base_setup/files/btrfs-backup.sh` against a
 stub `btrfs`, so it needs neither Btrfs nor root.
