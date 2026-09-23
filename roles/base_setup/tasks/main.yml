@@ -88,7 +88,7 @@
   ansible.builtin.copy:
     dest: /etc/containers/policy.json
     owner: root
-    mode: '0644'
+    mode: "0644"
     content: "{{ base_setup_policy_default.content | b64decode | from_json
                  | combine({'default': [{'type': 'reject'}],
                             'transports': {'docker': base_setup_policy_extra}}, recursive=True)
@@ -159,7 +159,7 @@
     label: "{{ item.name }}"
 
 - name: Enable and start snapshot timers for each service
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: btrfs-snapshot@{{ item.name }}.timer
     enabled: true
     state: started
@@ -180,7 +180,7 @@
   loop: "{{ base_setup_services }}"
 
 - name: Enable and start auto-reboot timer
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: auto-reboot-staged.timer
     enabled: true
     state: started
@@ -198,7 +198,7 @@
     label: "{{ item.name }}"
 
 - name: Ensure firewalld is running
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: firewalld
     state: started
     enabled: true
@@ -254,14 +254,14 @@
         path: "{{ base_setup_luks_keyfile | dirname }}"
         state: directory
         owner: root
-        mode: '0700'
+        mode: "0700"
 
     - name: Write the LUKS key file
       ansible.builtin.copy:
         content: "{{ base_setup_luks_passphrase }}"
         dest: "{{ base_setup_luks_keyfile }}"
         owner: root
-        mode: '0400'
+        mode: "0400"
       no_log: true
 
 - name: Set up the iSCSI backup target

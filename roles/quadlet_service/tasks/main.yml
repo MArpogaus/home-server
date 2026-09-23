@@ -34,7 +34,7 @@
       ansible.builtin.copy:
         content: "{{ item.content }}"
         dest: "{{ quadlet_service_stage.path }}/{{ item.dest }}"
-        mode: '0644'
+        mode: "0644"
       loop: "{{ quadlet_service_extra_files | selectattr('content', 'defined') | list }}"
       loop_control:
         label: "{{ item.dest }}"
@@ -46,7 +46,7 @@
       ansible.builtin.template:
         src: "{{ item.src }}"
         dest: "{{ quadlet_service_stage.path }}/{{ item.path | regex_replace('\\.j2$', '') }}"
-        mode: '0644'
+        mode: "0644"
       loop: "{{ query('community.general.filetree', service_repo ~ '/quadlets/')
                 | selectattr('state', 'equalto', 'file') | selectattr('path', 'search', '\\.j2$') | list }}"
       loop_control:
@@ -98,7 +98,7 @@
         state: directory
         owner: "{{ service_name }}"
         group: "{{ service_name }}"
-        mode: '0755'
+        mode: "0755"
 
     - name: Unpack the Quadlets, drop-ins and configs
       ansible.builtin.unarchive:
