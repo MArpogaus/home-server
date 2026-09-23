@@ -8,8 +8,3 @@ bunker_service_server_name: cloud.example.com
 nextcloud_service_trusted_domains: cloud.example.com
 # The ntfy site needs its own DNS record.
 bunker_service_ntfy_server_name: ""
-
-# Every URL here must resolve and answer, or PublicUrlDown fires.
-monitoring_service_probe_urls:
-  - https://cloud.example.com/status.php
-  - https://ntfy.example.com/v1/health

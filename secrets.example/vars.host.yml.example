@@ -1,6 +1,6 @@
 ---
 # Copy to secrets/vars.<TARGET_NAME>.yml in the secrets repository, where
-# <TARGET_NAME> is the name you pass to the scripts, such as test or t630.
+# <TARGET_NAME> is the name you pass to the scripts, such as test.
 # Values here win over vars.yml, which every host shares. Each host has its own
 # credentials, so a test VM never holds a production one. Encrypt the file.
 
@@ -23,7 +23,16 @@ bunker_service_auto_lets_encrypt: "no"
 # The tag this host follows. The VM tracks what the dev branch publishes.
 # nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
 
+# Real hardware only: the public URLs to probe, which must resolve and answer
+# or PublicUrlDown fires. The test VM probes nothing.
+monitoring_service_probe_urls: []
+# monitoring_service_probe_urls:
+#   - https://cloud.example.com/status.php
+#   - https://ntfy.example.com/v1/health
+
 # Real hardware only: the backup target.
 # base_setup_iscsi_portal: ""
 # base_setup_iscsi_target: ""
+# base_setup_iscsi_chap_user: ""
+# base_setup_iscsi_chap_password: ""
 # base_setup_luks_passphrase: ""
