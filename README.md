@@ -162,7 +162,14 @@ The VM boots with the key in `test/`, and the scripts log in with
 ```bash
 cp ../home-server-secrets/ssh/coreos_key{,.pub} test/
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
-./deploy.sh && ./functional_test.sh                                   # terminal 2
+```
+
+In terminal 2, once the VM has rebased and rebooted:
+
+```bash
+ssh -p 2222 -i test/coreos_key -o IdentitiesOnly=yes \
+  core@127.0.0.1 systemctl is-active install-secureblue.service   # inactive
+./deploy.sh && ./functional_test.sh
 ```
 
 ### A controller in a container
