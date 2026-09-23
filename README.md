@@ -68,7 +68,7 @@ container names.
 | Backup | `btrfs-backup@<target>.service`, started by a finished snapshot: incremental `btrfs send` to each target |
 | Memory | Swap on zram, sized `min(ram / 2, 4096)` |
 | Power | `sleep`, `suspend`, `hibernate` and `hybrid-sleep` targets masked: a server that suspends is down |
-| Updates | `podman-auto-update.timer` per user for the containers. A staged OS image is applied by a reboot right after the night's backup (`OnSuccess=` on each backup unit starts `auto-reboot-staged.service`), and `auto-reboot-staged.timer` repeats that check at 03:00 as the fallback. The platform stages the image with `rpm-ostreed-automatic.timer`. Stock Fedora CoreOS runs Zincati instead, which stages and reboots on its own schedule |
+| Updates | `podman-auto-update.timer` per user for the containers. A staged OS image is applied by a reboot after the night's backup (`docs/DESIGN.md`, "Updates are unattended"). The platform stages the image with `rpm-ostreed-automatic.timer`. Stock Fedora CoreOS runs Zincati instead, which stages and reboots on its own schedule |
 | Firewall | firewalld: ssh, http and https are opened, permanent and immediate, with no `firewall-cmd --reload`, which would drop the SSH connection the deploy runs over. `ip_unprivileged_port_start=80`, so any service user can bind 80 and 443 while the proxy is down |
 | Metrics | `/var/lib/node-textfile`, see "Metrics" |
 
