@@ -303,4 +303,4 @@ check_output "No logind session is stuck in closing" \
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
-exit $FAIL
+[ "$FAIL" -eq 0 ]
