@@ -359,8 +359,10 @@ for what differs.
 
 ## Adding a service
 
-1. Copy `home-server-template` to `home-server-<name>`. Replace `__NAME__` with
-   the service name and `__PORT__` with a free loopback port (table below).
+1. Copy `home-server-template` to a new repository `home-server-<name>`.
+   Replace `__NAME__` with the service name and `__PORT__` with a free
+   loopback port (table below). Push it, and add it here as a submodule:
+   `git submodule add <its URL> services/<name>`.
 2. Add the service to `base_setup_services` in
    `inventory/group_vars/homeserver.yml`:
 
@@ -370,13 +372,17 @@ for what differs.
        uid: 1003
    ```
 
-   `repo` names the repository `home-server-<repo>` and defaults to `name`. A
+   `repo` names the submodule `services/<repo>` and defaults to `name`. A
    service's `uid` never changes after its first deploy. It sets the subuid
    range, and every image layer and data file of the service is owned inside
    that range.
-3. For a public service, add its site to `bunker_service_sites` in the same
-   file, its hostname to the vault vars, and a DNS record for that name.
-4. Add its public URL to `monitoring_service_probe_urls`.
+3. For a public service, define `<name>_site` in the same file like
+   `nextcloud_site`, add it to the list `bunker_service_sites` builds, put its
+   hostname in `../home-server-secrets/secrets/vars.yml`, and add a DNS record
+   for that name.
+4. Add its public URL to `monitoring_service_probe_urls` in
+   `../home-server-secrets/secrets/vars.<host>.yml` of each host that serves
+   it.
 5. Give each container a `Memory=` ceiling, and lower another service's ceiling
    first when the sum outgrows the host (`docs/DESIGN.md`, "Memory ceilings are
    ceilings, not reservations").
