@@ -1,5 +1,5 @@
 groups:
-  - name: core-jobs
+  - name: home-server-jobs
     interval: 1m
     rules:
       - alert: ScheduledJobFailed
@@ -17,7 +17,7 @@ groups:
           summary: "{{ $labels.unit }} failed"
           description: "Check `journalctl -u {{ $labels.unit }}`. The data it protects has no fresh copy."
 
-  - name: core-reboot
+  - name: home-server-reboot
     interval: 15m
     rules:
       - alert: AutoRebootBlocked
@@ -32,7 +32,7 @@ groups:
           summary: "auto-reboot-staged was refused twice; the staged update is not applied"
           description: "A job holds a shutdown inhibitor. Read `systemd-inhibit --list`."
 
-  - name: core-host
+  - name: home-server-host
     interval: 1m
     rules:
       - alert: SshLogin

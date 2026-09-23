@@ -1,5 +1,5 @@
 groups:
-  - name: core-jobs
+  - name: home-server-jobs
     interval: 5m
     rules:
       - alert: JobStale
