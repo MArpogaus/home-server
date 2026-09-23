@@ -104,9 +104,7 @@ Three references move by hand:
   The rebase follows the image's `latest` tag, so the image itself does not
   move by hand.
 - the Fedora CoreOS release in `test/start_vm.py`, with its checksum
-- the Nextcloud majors: `versions` in `home-server-nextcloud`'s
-  `.github/workflows/build.yml` and the role default
-  `nextcloud_service_app_image`
+- the Nextcloud majors (`home-server-nextcloud/README.md`, "Major upgrade")
 
 ## Deploy
 
@@ -406,9 +404,8 @@ succeeds reads as stale 30 hours later.
 Each target is a LUKS2 container that holds Btrfs. This applies to a USB disk
 and to an iSCSI LUN on the NAS. `btrfs send` needs a block device. A file
 share holds no ownership and no xattrs. SecureBlue also blocks NFS and SMB at
-module level. Nested subvolumes are the exclude list. A snapshot does not go
-into a nested subvolume. Thus `data/custom_apps` (app code, Recognize models)
-never enters a snapshot or a backup.
+module level. Nested subvolumes are the exclude list: a snapshot does not go
+into a nested subvolume (`home-server-nextcloud/README.md`, "Backups").
 
 ```yaml
 base_setup_luks_passphrase: "<one passphrase for every target>"
@@ -456,7 +453,7 @@ backup.
 
 | Layer | Covers | Does not |
 |---|---|---|
-| Btrfs snapshot, nightly per service | `/var/services/<service>`, including the database dump | `data/custom_apps`, a nested subvolume, deliberately: app code and the Recognize models are gigabytes and are re-downloaded |
+| Btrfs snapshot, nightly per service | `/var/services/<service>`, including the database dump | a service's nested subvolumes (`home-server-nextcloud/README.md`, "Backups") |
 | `btrfs send` to a target | the same, off the machine | the same exclusion |
 | `pg_dumpall` before the snapshot | the cluster, as SQL | nothing the snapshot does not already hold; it exists so the snapshot is consistent |
 | `rpm-ostree` rollback | the OS image | `/etc` and `/var/home/core`, which only a deploy restores |
