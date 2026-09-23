@@ -198,8 +198,7 @@ trust, and compare the fingerprint with the console:
 `ssh-keyscan -H -p <port> <host> 2>/dev/null >> ssh/known_hosts`.
 
 `deploy.sh` checks the secrets, the Vault password, the SSH identity and that
-Ansible's Python has `passlib` and `bcrypt`, which the ntfy user hash needs
-(`uv tool install --reinstall ansible --with passlib --with bcrypt`). It
+Ansible's Python has `passlib` and `bcrypt` ("Requirements"). It
 installs the collections and removes group and other access from
 `home-server-secrets`. It runs the playbook from this repository, where
 `ansible.cfg` is, and passes the host key and identity options through
@@ -245,8 +244,6 @@ new deployment", this shows readable diffs:
 | `monitoring_service_ntfy_base_url` | no | loopback | `https://` and the ntfy hostname |
 | `monitoring_service_grafana_admin_password` | yes | | Grafana `admin`; the role refuses to run without it |
 | `monitoring_service_probe_urls` | on a real host | `[]` | `https://` URLs probed every minute; empty means no public-path alerting |
-| `base_setup_backup_targets` | no | `[]` | Encrypted Btrfs backup targets, by LUKS UUID |
-| `base_setup_luks_passphrase` | with targets | | One passphrase for every target; keep a copy off the box |
 | `base_setup_iscsi_*` | no | no iSCSI | An iSCSI LUN as a backup target |
 
 The passwords and the ntfy token belong to one host each and go to
@@ -281,7 +278,7 @@ default. The ones whose default is not the whole story:
 |---|---|
 | `base_setup_backup_targets` | `[]` means no off-box backup. A target that leaves the list loses its config file and its backup metric on the next deploy |
 | `base_setup_iscsi_portal` | Set: the deploy logs in to the iSCSI target, with or without a backup target |
-| `base_setup_luks_passphrase` | Required as soon as a backup target is set; keep a copy off the box |
+| `base_setup_luks_passphrase` | Required as soon as a backup target is set; one passphrase for every target |
 
 ### The VM and the real host
 
