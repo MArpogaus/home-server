@@ -182,7 +182,7 @@ Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 | `TARGET_NAME` | `test` | The host vars, `secrets/vars.<name>.yml`. A name, so a host keeps its settings when its address changes |
 | `ANSIBLE_VAULT_PASSWORD_FILE` | `~/.config/home-server/vault-password` | The Vault password; see "Vault" |
 | `SSH_KEY_FILE` | `ssh/coreos_key` | The key file |
-| `SSH_AUTH_KEY` | `file` | `agent` uses the SSH agent. The t630 accepts the YubiKey only |
+| `SSH_AUTH_KEY` | `file` | `agent` uses the SSH agent, the YubiKey that a real host accepts |
 | `SERVICES` | every service user on the host | The per-user checks |
 | `SERVER_NAME` | from the secrets | The hostname the HTTPS checks use |
 | `BACKUP_TARGET` | none | A configured backup target that the test runs a real backup against |
@@ -283,7 +283,8 @@ default. The ones whose default is not the whole story:
 ### The VM and the real host
 
 `vars.yml` holds what both hosts share, including the public hostnames.
-`vars.test.yml` and `vars.t630.yml` override it; read them for what differs.
+`vars.test.yml` and one `vars.<host>.yml` per real host override it; read them
+for what differs.
 
 ## Adding a service
 
@@ -531,8 +532,8 @@ rebases to SecureBlue, removes itself and reboots.
    `secrets/vars.<name>.yml`, and deploy an empty host:
 
    ```bash
-   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=t630 SSH_AUTH_KEY=agent ./deploy.sh
-   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=t630 SSH_AUTH_KEY=agent ./functional_test.sh
+   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./deploy.sh
+   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./functional_test.sh
    ```
 
    Get 0 failed before you restore data.
@@ -542,8 +543,8 @@ rebases to SecureBlue, removes itself and reboots.
    target, disconnect a target and start the sync (it must fail clearly), and
    stop a container and wait for the ntfy alert.
 
-The t630 boots in legacy BIOS mode. A change to UEFI needs no new
-installation, because the ESP holds the files and bootupd keeps them current.
+A host that boots in legacy BIOS mode needs no new installation for a change to
+UEFI, because the ESP holds the files and bootupd keeps them current.
 
 ### Adding a backup target
 
@@ -566,9 +567,9 @@ initiator name alone admits any device on the LAN that claims it, and LUKS
 keeps such a device from reading the backups, not from overwriting them.
 
 SecureBlue's policy stops iscsid from creating its netlink socket, so the host
-task file must make `iscsid_t` permissive
-(`home-server-secrets/tasks/t630-pre.yml`). The deploy logs in to the target.
-Format the LUN once by hand, with `D=/dev/disk/by-path/<by-path name>`:
+task file must make `iscsid_t` permissive (`secrets/tasks/<host>-pre.yml`, see
+"Host-specific tasks"). The deploy logs in to the target. Format the LUN once by
+hand, with `D=/dev/disk/by-path/<by-path name>`:
 
 ```bash
 run0 cryptsetup luksFormat --type luks2 "$D" /etc/luks/backup.key
@@ -690,15 +691,15 @@ A deploy that restarts a pod writes some of these lines too. They stop within
 fifteen minutes.
 
 **The host runs but does not answer.** Ping, SSH and HTTPS fail, the console
-shows a running system with `Link detected: yes`. On the t630 that is Energy
-Efficient Ethernet on the Realtek NIC: `ethtool --show-eee enp1s0` shows
-`EEE status: enabled - active`. The host task file turns EEE off when the
+shows a running system with `Link detected: yes`. On a Realtek NIC that is
+Energy Efficient Ethernet: `ethtool --show-eee <interface>` shows
+`EEE status: enabled - active`. A host task file turns EEE off when the
 interface comes up. `run0 journalctl -b -1 | tail` shows how the previous boot
 ended.
 
 **A deploy waits a long time.** The Nextcloud install and the monitoring
 readiness waits cover a cold image pull and a major upgrade, which each take
-more than ten minutes on the t630. Read the container's journal instead of
+more than ten minutes on a thin client. Read the container's journal instead of
 waiting.
 
 ## Test VM
