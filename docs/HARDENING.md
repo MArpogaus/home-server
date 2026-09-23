@@ -11,9 +11,8 @@ theft and nation-state adversaries are out of scope.
 
 Done:
 
-- Nextcloud's database and admin passwords are Podman secrets, not
-  environment variables. They are absent from `podman inspect` and
-  `/proc/<pid>/environ`. Grafana's and ntfy's credentials are environment
+- Nextcloud's database and admin passwords are Podman secrets
+  (`home-server-nextcloud/README.md`, "Secrets and domains"). Grafana's and ntfy's credentials are environment
   variables, from files the role keeps at `0600`. They are visible to anyone
   who can already run `podman` as that service user. The ntfy token is also in
   Alertmanager's config (`home-server-monitoring/README.md`, "File modes").
