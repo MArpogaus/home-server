@@ -7,7 +7,7 @@ base_setup_services: []
 
 base_setup_services_dir: /var/services
 
-base_setup_btrfs_snapshot_dir: /var/services/snapshots
+base_setup_btrfs_snapshot_dir: "{{ base_setup_services_dir }}/snapshots"
 base_setup_btrfs_snapshot_retention_days: 30
 base_setup_btrfs_snapshot_schedule: daily
 
