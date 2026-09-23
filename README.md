@@ -17,7 +17,7 @@ private repository cloned beside this one.
 | `home-server-nextcloud` | Nextcloud pod, Ansible role, custom image build |
 | `home-server-bunker` | BunkerWeb reverse proxy pod (WAF, TLS, ntfy site) and role |
 | `home-server-monitoring` | Prometheus, Alertmanager, Grafana, Loki, Alloy, node-exporter, ntfy |
-| `home-server-template` | Skeleton to copy for a new service |
+| `home-server-template` | Skeleton to copy for a new service; `home-server-core/README.md`, "Adding a service", has the checklist |
 | `home-server-deploy` | Inventory, the deploy and test scripts, the platform files, the secrets templates |
 | `home-server-secrets` | The credentials and the SSH identities (**private**) |
 | `image-builder-action` | Reusable GitHub Action that builds and signs images; a deploy does not need it |
