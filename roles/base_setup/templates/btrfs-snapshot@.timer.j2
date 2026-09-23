@@ -1,0 +1,9 @@
+[Unit]
+Description=Btrfs snapshot timer for @%i
+
+[Timer]
+OnCalendar={{ base_setup_btrfs_snapshot_schedule }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

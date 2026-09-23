@@ -1,0 +1,150 @@
+---
+# One archive per service instead of one SSH round trip per file.
+# docs/DESIGN.md, "One role deploys every service's Quadlets".
+- name: Stage the Quadlets on the controller
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: "-{{ service_name }}-quadlets"
+  register: quadlet_service_stage
+  delegate_to: localhost
+  become: false
+  changed_when: false
+
+- name: Ship the stage
+  block:
+    - name: Copy the static files into the stage
+      ansible.builtin.shell:
+        cmd: |
+          set -eu
+          stage={{ quadlet_service_stage.path | quote }}
+          cp -r {{ (role_path ~ '/files/container.d') | quote }} "$stage/"
+          cp -r {{ (service_repo ~ '/quadlets/.') | quote }} "$stage/"
+          find "$stage" -name '*.j2' -delete
+          {% for f in quadlet_service_extra_files %}
+          mkdir -p "$(dirname "$stage"/{{ f.dest | quote }})"
+          {% if f.src is defined %}
+          cp -r {{ f.src | quote }} "$stage"/{{ f.dest | quote }}
+          {% endif %}
+          {% endfor %}
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Write the generated files into the stage
+      ansible.builtin.copy:
+        content: "{{ item.content }}"
+        dest: "{{ quadlet_service_stage.path }}/{{ item.dest }}"
+        mode: '0644'
+      loop: "{{ quadlet_service_extra_files | selectattr('content', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.dest }}"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Render the templates into the stage
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ quadlet_service_stage.path }}/{{ item.path | regex_replace('\\.j2$', '') }}"
+        mode: '0644'
+      loop: "{{ query('community.general.filetree', service_repo ~ '/quadlets/')
+                | selectattr('state', 'equalto', 'file') | selectattr('path', 'search', '\\.j2$') | list }}"
+      loop_control:
+        label: "{{ item.path }}"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    # In the stage, so `unarchive` does not undo a chmod on every run.
+    - name: Restrict the config files that must not be world-readable
+      ansible.builtin.file:
+        path: "{{ quadlet_service_stage.path }}/configs/{{ item.key }}"
+        mode: "{{ item.value }}"
+      loop: "{{ quadlet_service_config_modes | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    # Fixed mtimes and top-level entries only, so an unchanged tree packs to
+    # the same bytes.
+    - name: Pack the stage
+      ansible.builtin.shell:  # noqa: command-instead-of-module  (no module creates an archive with fixed mtimes)
+        cmd: >-
+          set -o pipefail &&
+          umask 077 &&
+          cd {{ quadlet_service_stage.path | quote }} &&
+          ls -A | tar --create --gzip --sort=name --owner=0 --group=0 --numeric-owner
+          --mtime='2000-01-01 00:00:00' --files-from - --file {{ quadlet_service_stage.path | quote }}.tgz
+        executable: /bin/bash
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: List what the stage holds
+      ansible.builtin.find:
+        paths: "{{ quadlet_service_stage.path }}"
+        recurse: true
+        file_type: any
+      register: quadlet_service_staged
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+    - name: Ensure the Quadlet directory exists
+      ansible.builtin.file:
+        path: "{{ quadlet_service_dir }}"
+        state: directory
+        owner: "{{ service_name }}"
+        group: "{{ service_name }}"
+        mode: '0755'
+
+    - name: Unpack the Quadlets, drop-ins and configs
+      ansible.builtin.unarchive:
+        src: "{{ quadlet_service_stage.path }}.tgz"
+        dest: "{{ quadlet_service_dir }}/"
+        owner: "{{ service_name }}"
+        group: "{{ service_name }}"
+      register: quadlet_service_archive
+  always:
+    - name: Remove the stage
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ quadlet_service_stage.path }}"
+        - "{{ quadlet_service_stage.path }}.tgz"
+      delegate_to: localhost
+      become: false
+      changed_when: false
+
+- name: Find everything under the Quadlet directory on the host
+  ansible.builtin.find:
+    paths: "{{ quadlet_service_dir }}"
+    recurse: true
+    file_type: any
+  register: quadlet_service_host
+
+- name: Remove what is no longer in the repo
+  ansible.builtin.file:
+    path: "{{ quadlet_service_dir }}/{{ item }}"
+    state: absent
+  loop: "{{ quadlet_service_host.files | map(attribute='path') | map('relpath', quadlet_service_dir)
+            | difference(quadlet_service_staged.files | map(attribute='path')
+                         | map('relpath', quadlet_service_stage.path) | list) | list }}"
+  register: quadlet_service_removed
+
+- name: Start the pod, or restart it when its files changed
+  ansible.builtin.systemd_service:
+    name: "{{ quadlet_service_pod }}-pod.service"
+    scope: user
+    daemon_reload: "{{ quadlet_service_archive is changed or quadlet_service_removed is changed }}"
+    state: "{{ 'restarted' if quadlet_service_changed else 'started' }}"
+  become: true
+  become_user: "{{ service_name }}"
+  vars:
+    quadlet_service_changed: >-
+      {{ quadlet_service_restart | bool
+         or quadlet_service_archive is changed
+         or quadlet_service_removed is changed }}

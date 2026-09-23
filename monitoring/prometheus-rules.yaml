@@ -1,0 +1,20 @@
+groups:
+  - name: core-jobs
+    interval: 5m
+    rules:
+      - alert: JobStale
+        expr: >-
+          label_replace({__name__=~".+_last_success_timestamp_seconds"}, "metric", "$1", "__name__", "(.+)")
+          < time() - 30 * 3600
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.metric }} {{ $labels.target }}{{ $labels.service }} is older than 30 hours"
+          description: "The job behind this metric has not succeeded since. Read its unit's journal."
+
+      - alert: BackupTargetLow
+        expr: backup_target_avail_bytes / backup_target_size_bytes < 0.10
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup target {{ $labels.target }} is below 10% free"

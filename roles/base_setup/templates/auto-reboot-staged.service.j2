@@ -1,0 +1,11 @@
+[Unit]
+Description=Reboot if rpm-ostree has a staged deployment
+ConditionPathExists=/run/ostree/staged-deployment
+{% if base_setup_backup_targets | length > 0 %}
+After={% for t in base_setup_backup_targets %}btrfs-backup@{{ t.name }}.service {% endfor %}
+
+{% endif %}
+
+[Service]
+Type=oneshot
+ExecStart=systemctl reboot --check-inhibitors=yes

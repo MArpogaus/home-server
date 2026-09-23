@@ -1,0 +1,15 @@
+[Unit]
+Description=Btrfs read-only snapshot of @%i
+{% if base_setup_backup_targets | length > 0 %}
+OnSuccess={% for t in base_setup_backup_targets %}btrfs-backup@{{ t.name }}.service {% endfor %}
+
+{% endif %}
+
+[Service]
+Type=oneshot
+TimeoutStartSec=2h
+Environment=BTRFS_SNAPSHOT_DIR={{ base_setup_btrfs_snapshot_dir }}
+Environment=BTRFS_SNAPSHOT_RETENTION_DAYS={{ base_setup_btrfs_snapshot_retention_days }}
+Environment=BTRFS_SERVICES_DIR={{ base_setup_services_dir }}
+Environment=NODE_TEXTFILE_DIR=/var/lib/node-textfile
+ExecStart=/usr/local/bin/btrfs-snapshot-cleanup.sh %i

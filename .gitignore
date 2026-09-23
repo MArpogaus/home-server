@@ -1,3 +1,21 @@
+# Ansible
 *.retry
 .ansible/
+__pycache__/
+
+# Keys, rendered Ignition (carries the password hash and the authorised key),
+# installer images and VM disks
+*_key
+*_key.pub
+config.bu
+config.ign
+platform.ign
+*.iso
+*.qcow2
+*.qcow2.*
+
+# Editor noise
+*~
+*.swp
+*.bak
 *.log

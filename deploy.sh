@@ -2,7 +2,6 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ANSIBLE_DIR="${SCRIPT_DIR}/../home-server-core"
 # shellcheck source=lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
@@ -29,14 +28,14 @@ validate_python_deps() {
 deploy_ansible() {
     printf -v ANSIBLE_SSH_COMMON_ARGS '%q ' "${SSH_OPTS[@]}"
     export ANSIBLE_SSH_COMMON_ARGS
-    cd "${ANSIBLE_DIR}"
+    cd "${SCRIPT_DIR}"
     # Last command: `if deploy_ansible` disables errexit inside, so the
     # playbook's status is the function's.
     ansible-playbook -i "${SCRIPT_DIR}/inventory/hosts.ini" site.yml \
         --extra-vars "@${SECRETS_DIR}/secrets/vars.yml" \
         --extra-vars "@${SECRETS_DIR}/secrets/vars.${TARGET_NAME}.yml" \
         --extra-vars "ansible_host=${TARGET_HOST} ansible_port=${TARGET_PORT}" \
-        --extra-vars "secrets_dir=${SECRETS_DIR} deploy_dir=${SCRIPT_DIR}"
+        --extra-vars "secrets_dir=${SECRETS_DIR}"
 }
 
 notify() {
@@ -51,7 +50,7 @@ notify() {
 validate_secrets
 ssh_opts
 validate_python_deps
-ansible-galaxy collection install -r "${ANSIBLE_DIR}/requirements.yml" >/dev/null
+ansible-galaxy collection install -r "${SCRIPT_DIR}/requirements.yml" >/dev/null
 if deploy_ansible; then
     notify "Deploy to ${TARGET_HOST} succeeded" rocket
     echo "✓ Deploy complete"

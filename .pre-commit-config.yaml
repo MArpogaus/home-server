@@ -19,6 +19,12 @@ repos:
     hooks:
       - id: shellcheck
 
+  # ansible-lint owns YAML style, so no YAML formatter runs beside it.
+  - repo: https://github.com/ansible/ansible-lint
+    rev: e7f397ad6dfa20d274afa17cd7bbedd84ed136f5  # frozen: v26.9.0
+    hooks:
+      - id: ansible-lint
+
   - repo: https://github.com/commitizen-tools/commitizen
     rev: 054e4a278e11abb9b8df6c103fa64f544d468ee5  # frozen: v4.19.0
     hooks:
@@ -26,3 +32,12 @@ repos:
         stages: [commit-msg]
       - id: commitizen-branch
         stages: [pre-push]
+
+  - repo: local
+    hooks:
+      - id: test-btrfs-backup
+        name: btrfs-backup.sh self-check
+        entry: test/test_btrfs_backup.sh
+        language: script
+        files: (btrfs-backup\.sh|test_btrfs_backup\.sh)$
+        pass_filenames: false
