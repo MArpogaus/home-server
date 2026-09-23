@@ -85,6 +85,11 @@ Open:
   host's policy. An image added there is accepted without a signature, so the
   review that matters happens in that repository.
 - Unattended updates reach production with no gate.
+- The test VM is root for anyone who holds its key: `ssh/coreos_key` has no
+  passphrase, and `core` escalates without one. The VM holds throwaway
+  credentials of its own, so it gives nothing that production accepts.
+  `start_vm.py` publishes its ports on `127.0.0.1`; `--listen` with another
+  address opens them to that network.
 - Git history, unreferenced GitHub objects and other clones can hold
   plaintext credentials. Every value that was ever plaintext is rotated. A
   LUKS header backup accepts every passphrase its key slots held when it was
