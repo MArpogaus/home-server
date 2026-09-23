@@ -174,6 +174,67 @@ ssh -p 2222 -i test/coreos_key -o IdentitiesOnly=yes \
 ./deploy.sh && ./functional_test.sh
 ```
 
+### Installing the real host
+
+`ignition/` holds one Butane template for the test VM and the
+real hardware. It sets up the Btrfs root, the SSH key, the cosign public key,
+the polkit rule that lets `run0` escalate without a password, and a first-boot
+unit that layers python3 when the image has none.
+`--platform ../platform/secureblue.bu` adds the unit that
+rebases to SecureBlue, removes itself and reboots.
+
+1. Point DNS at the public address of the machine. Forward ports 80 and 443
+   from the router, and no other port. Let's Encrypt validates over port 80,
+   so TLS works only after the record resolves from the internet.
+2. Boot the unmodified live ISO on the target once and read the disk name:
+   `lsblk -dno NAME,SIZE,MODEL` and `ls -l /dev/disk/by-id/ | grep -v part`.
+   If a USB stick is attached during the install, use the
+   `/dev/disk/by-id/ata-<model>_<serial>` path, because the stick can take
+   the name `sda`.
+3. Plug in the YubiKey, then build:
+
+   ```bash
+   cd ignition
+   INSTALLER=$(sed -n 's/^INSTALLER_IMAGE="\(.*\)"$/\1/p' build.sh)   # the pinned digest
+   podman run --rm -v "$PWD":/data:z -w /data \
+     "$INSTALLER" download -s stable -p metal -f iso
+   P=../platform/secureblue.bu
+   ./build.sh --platform $P ign         # render config.ign only; read it
+   ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
+   ```
+
+   `./build.sh --platform $P install /dev/sdX` writes a disk attached to this
+   computer instead, and needs `sudo podman`. `build.sh` needs `podman`. It
+   authorises the smartcard key from your SSH agent, the key whose comment
+   contains `cardno:`, unless `SSH_PUBLIC_KEY` names another. It asks for a
+   console password, which is for the machine's own console; SSH refuses
+   passwords. `PASSWORD_HASH=none` leaves the console without one.
+
+   CAUTION: `install.iso` installs onto the named device of the target and
+   reboots, with no prompt. It erases that disk.
+4. Boot the stick. The machine installs Fedora CoreOS, rebases to SecureBlue
+   and reboots. SSH answers throughout. The host is ready when the first-boot
+   unit is done:
+   `ssh core@<host> systemctl is-active install-secureblue.service` prints
+   `inactive`.
+5. Record the host key (see "Deploy"), put the host's values in
+   `secrets/vars.<name>.yml`, and deploy an empty host:
+
+   ```bash
+   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./deploy.sh
+   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./functional_test.sh
+   ```
+
+   Get 0 failed before you restore data.
+6. Before you trust the host with data, do the checks the functional test
+   cannot do: restore a dump into a scratch database and read a table, reboot
+   and check that each container starts again, read a file back from a backup
+   target, disconnect a target and start the sync (it must fail clearly), and
+   stop a container and wait for the ntfy alert.
+
+A host that boots in legacy BIOS mode needs no new installation for a change to
+UEFI, because the ESP holds the files and bootupd keeps them current.
+
 ### A controller in a container
 
 `start_vm.py` publishes the VM's ports on `127.0.0.1`. A controller in a
@@ -491,67 +552,6 @@ run0 --user=nextcloud -- systemctl --user status nc-pod.service
 
 Replace `nextcloud` with `proxy` or `monitoring`. A root command is
 `run0 <command>`.
-
-### Installing the real host
-
-`ignition/` holds one Butane template for the test VM and the
-real hardware. It sets up the Btrfs root, the SSH key, the cosign public key,
-the polkit rule that lets `run0` escalate without a password, and a first-boot
-unit that layers python3 when the image has none.
-`--platform ../platform/secureblue.bu` adds the unit that
-rebases to SecureBlue, removes itself and reboots.
-
-1. Point DNS at the public address of the machine. Forward ports 80 and 443
-   from the router, and no other port. Let's Encrypt validates over port 80,
-   so TLS works only after the record resolves from the internet.
-2. Boot the unmodified live ISO on the target once and read the disk name:
-   `lsblk -dno NAME,SIZE,MODEL` and `ls -l /dev/disk/by-id/ | grep -v part`.
-   If a USB stick is attached during the install, use the
-   `/dev/disk/by-id/ata-<model>_<serial>` path, because the stick can take
-   the name `sda`.
-3. Plug in the YubiKey, then build:
-
-   ```bash
-   cd ignition
-   INSTALLER=$(sed -n 's/^INSTALLER_IMAGE="\(.*\)"$/\1/p' build.sh)   # the pinned digest
-   podman run --rm -v "$PWD":/data:z -w /data \
-     "$INSTALLER" download -s stable -p metal -f iso
-   P=../platform/secureblue.bu
-   ./build.sh --platform $P ign         # render config.ign only; read it
-   ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
-   ```
-
-   `./build.sh --platform $P install /dev/sdX` writes a disk attached to this
-   computer instead, and needs `sudo podman`. `build.sh` needs `podman`. It
-   authorises the smartcard key from your SSH agent, the key whose comment
-   contains `cardno:`, unless `SSH_PUBLIC_KEY` names another. It asks for a
-   console password, which is for the machine's own console; SSH refuses
-   passwords. `PASSWORD_HASH=none` leaves the console without one.
-
-   CAUTION: `install.iso` installs onto the named device of the target and
-   reboots, with no prompt. It erases that disk.
-4. Boot the stick. The machine installs Fedora CoreOS, rebases to SecureBlue
-   and reboots. SSH answers throughout. The host is ready when the first-boot
-   unit is done:
-   `ssh core@<host> systemctl is-active install-secureblue.service` prints
-   `inactive`.
-5. Record the host key (see "Deploy"), put the host's values in
-   `secrets/vars.<name>.yml`, and deploy an empty host:
-
-   ```bash
-   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./deploy.sh
-   TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./functional_test.sh
-   ```
-
-   Get 0 failed before you restore data.
-6. Before you trust the host with data, do the checks the functional test
-   cannot do: restore a dump into a scratch database and read a table, reboot
-   and check that each container starts again, read a file back from a backup
-   target, disconnect a target and start the sync (it must fail clearly), and
-   stop a container and wait for the ntfy alert.
-
-A host that boots in legacy BIOS mode needs no new installation for a change to
-UEFI, because the ESP holds the files and bootupd keeps them current.
 
 ### Adding a backup target
 
