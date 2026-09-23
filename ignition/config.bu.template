@@ -68,5 +68,3 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target
-    - name: qemu-guest-agent.service
-      enabled: true
