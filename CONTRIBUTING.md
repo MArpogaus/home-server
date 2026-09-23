@@ -26,6 +26,22 @@ and `git push --follow-tags`. The `release` workflow turns every pushed tag into
 a GitHub release. GitHub writes its notes: the pull requests merged since the
 previous release and a link that compares the two tags.
 
+## Services and their pins
+
+Each service repository is a submodule under `services/<repo>`. Work on a
+service inside its submodule:
+
+```bash
+git -C services/<repo> switch dev          # a submodule checks out a commit
+# edit, then commit and push in services/<repo> as in its own CONTRIBUTING.md
+git add services/<repo>                    # move the pin here
+git commit -m "chore: pin home-server-<repo> to <short sha>"
+```
+
+A release of this repository pins released services. Tag the service
+repository first, check that tag out in `services/<repo>`, commit the pin
+here, and then release this repository as in "Releases".
+
 ## House style
 
 A comment says why, never what. Longer reasoning belongs in the README of the
@@ -42,3 +58,5 @@ short sentences, one meaning per word, and the condition before the command.
   `coreos-installer` and `butane` images that `ignition/build.sh` pins.
 - A local hook runs `test/test_btrfs_backup.sh` when `btrfs-backup.sh` or the
   test changes. `test/` also holds the VM harness.
+- A local hook runs `test/test_target_paths.yml` when the backup target keep
+  list in `roles/base_setup/vars/main.yml` changes.
