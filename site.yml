@@ -13,7 +13,7 @@
       ansible.builtin.set_fact:
         base_setup_services: >-
           {{ base_setup_services | map(attribute='repo')
-             | map('regex_replace', '^', playbook_dir ~ '/../home-server-') | map('realpath')
+             | map('regex_replace', '^', playbook_dir ~ '/services/') | map('realpath')
              | map('community.general.dict_kv', 'dir') | zip(base_setup_services) | map('combine') | list }}
 
     - name: Run what this host needs before the base setup
