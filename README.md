@@ -504,8 +504,9 @@ rebases to SecureBlue, removes itself and reboots.
 
    ```bash
    cd ignition
+   INSTALLER=$(sed -n 's/^INSTALLER_IMAGE="\(.*\)"$/\1/p' build.sh)   # the pinned digest
    podman run --rm -v "$PWD":/data:z -w /data \
-     quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
+     "$INSTALLER" download -s stable -p metal -f iso
    P=../platform/secureblue.bu
    ./build.sh --platform $P ign         # render config.ign only; read it
    ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
