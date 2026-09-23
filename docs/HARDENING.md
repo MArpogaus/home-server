@@ -15,7 +15,9 @@ Done:
   environment variables. They are absent from `podman inspect` and
   `/proc/<pid>/environ`. Grafana's and ntfy's credentials are environment
   variables, from files the role keeps at `0600`. They are visible to anyone
-  who can already run `podman` as that service user.
+  who can already run `podman` as that service user. The ntfy token is also in
+  Alertmanager's config, which stays world-readable because that container runs
+  as `nobody`. The `0750` service home keeps it from every other user.
 - Every container a Quadlet declares drops all capabilities, sets
   `no-new-privileges` and a pids limit. A pod's infra container keeps Podman's
   default set, because a Quadlet has no key for it.
