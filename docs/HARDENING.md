@@ -63,8 +63,7 @@ Done:
 
 Rejected or deliberately not done:
 
-- Btrfs quotas. qgroups cost CPU and memory, and the disk-space alert covers
-  the need.
+- Btrfs quotas (`docs/DESIGN.md` says why).
 - A non-root in-container user for every image. Nextcloud's entrypoint needs
   root to rsync and chown. The rest gains little once capabilities are dropped
   and `no-new-privileges` is set.
