@@ -121,10 +121,11 @@ unreadable without it.
 ```bash
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
-export ANSIBLE_VAULT_PASSWORD_FILE=~/.config/home-server/vault-password
+echo 'export ANSIBLE_VAULT_PASSWORD_FILE=~/.config/home-server/vault-password' >> ~/.bashrc
 ```
 
-Terminal 1 starts the VM. `start_vm.py` creates the key pair in `test/`,
+Open both terminals after that, so each one has the variable. Terminal 1
+starts the VM. `start_vm.py` creates the key pair in `test/`,
 because none is there yet:
 
 ```bash
