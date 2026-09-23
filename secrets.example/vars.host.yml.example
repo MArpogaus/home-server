@@ -21,8 +21,9 @@ host_tasks_pre: "{{ playbook_dir }}/platform/secureblue.yml"
 bunker_service_generate_self_signed_ssl: "yes"
 bunker_service_auto_lets_encrypt: "no"
 
-# The tag this host follows. The VM tracks what the dev branch publishes.
-# nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
+# The test VM follows the image the dev branch publishes. A real host deletes
+# this line and follows the role default.
+nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
 
 # Real hardware only: the public URLs to probe, which must resolve and answer
 # or PublicUrlDown fires. The test VM probes nothing.
