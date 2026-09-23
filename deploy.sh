@@ -36,7 +36,7 @@ deploy_ansible() {
         --extra-vars "@${SECRETS_DIR}/secrets/vars.yml" \
         --extra-vars "@${SECRETS_DIR}/secrets/vars.${TARGET_NAME}.yml" \
         --extra-vars "ansible_host=${TARGET_HOST} ansible_port=${TARGET_PORT}" \
-        --extra-vars "secrets_dir=${SECRETS_DIR}"
+        --extra-vars "secrets_dir=${SECRETS_DIR} deploy_dir=${SCRIPT_DIR}"
 }
 
 notify() {
