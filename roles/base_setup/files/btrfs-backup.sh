@@ -94,7 +94,7 @@ for src in "${SNAP_DIR}"/*/; do
 
 	for snap in "${DEST}/${svc}"/????-??-??; do
 		[ -d "${snap}" ] || continue
-		if [[ "$(basename "${snap}")" < "${CUTOFF}" ]]; then
+		if [[ "$(basename "${snap}")" < "${CUTOFF}" && "$(basename "${snap}")" != "${latest}" ]]; then
 			btrfs subvolume delete "${snap}" || rm -rf "${snap}"
 			echo "Deleted backup: ${snap}"
 		fi

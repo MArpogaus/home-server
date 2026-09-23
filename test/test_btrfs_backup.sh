@@ -160,6 +160,10 @@ setup_future_snapshot() {
 	mkdir -p "$1/snap/svc/${D3}" "$1/snap/svc/$(date -d '+7 days' +%F)"
 }
 
+setup_only_old_snapshot() {
+	mkdir -p "$1/snap/svc/${DOLD}"
+}
+
 setup_field_gone_old_partial() {
 	mkdir -p "$1/snap/svc/${D3}"
 	place "$1/backup/t/svc/${DOLD}" nofield-plain
@@ -178,6 +182,7 @@ run_case "an unfinished receive does not stop the rest" 1 2 setup_unfinished_one
 run_case "a failed receive does not stop the rest"  1 2 setup_failed_one_of_two "" "did not finish"
 run_case "a named snapshot is not the latest"      0 1 setup_named_snapshot "${D3}"
 run_case "retention deletes an unreceivable leftover" 0 1 setup_field_gone_old_partial "${D3}"
+run_case "retention keeps the newest copy"         0 1 setup_only_old_snapshot "" ""
 
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 [[ "${FAIL}" -eq 0 ]]
