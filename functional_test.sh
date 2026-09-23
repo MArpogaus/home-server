@@ -187,7 +187,7 @@ check_output "ntfy refuses anonymous publishing" \
 # The token travels on ssh stdin into curl's config, so it is on no command line.
 expect "ntfy accepts the token" \
   "$(printf 'header = "Authorization: Bearer %s"\n' "$(read_var monitoring_service_ntfy_token)" | "${SSH[@]}" \
-    'curl -s -o /dev/null -w %{http_code} -K - -H "Title: agent" -d "functional test" http://127.0.0.1:8081/alerts')" \
+    'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts')" \
   "^200$"
 
 # One burst of failed logins walks the whole path: journald, Alloy, Loki, the

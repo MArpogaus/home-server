@@ -108,7 +108,7 @@ topic with the token.
 `nextcloud-pg-dumpall` and a Btrfs snapshot, and a finished snapshot starts a
 backup to every target and, when an update is staged, the reboot after it. It
 makes eight failed SSH logins to prove that an alert fires, and publishes one
-message to the `alerts` topic, which reaches the phone with the title `agent`.
+message titled `functional test` to the target's `alerts` topic.
 It reads Loki through Grafana's datasource proxy with the Grafana admin
 credential, which travels on ssh stdin.
 
