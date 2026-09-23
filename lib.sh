@@ -46,6 +46,11 @@ PY
 ssh_opts() {
     case "${TEST_VM:-}:${TARGET_HOST}" in
     1:* | *:127.* | *:169.254.* | *:localhost)
+        [[ "${TARGET_NAME}" == test ]] || {
+            echo "ERROR: ${TARGET_HOST} is a test VM address, but TARGET_NAME is ${TARGET_NAME}." >&2
+            echo "       Only the test VM skips the host key check." >&2
+            exit 1
+        }
         HOST_KEY_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
         ;;
     *)

@@ -160,7 +160,8 @@ Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 | `TEST_VM` | none | `1` marks a target at another address, such as the host's LAN IP, as the test VM |
 
 A target on loopback or link-local, or one run with `TEST_VM=1`, is the test VM.
-It gets a new host key on every `--fresh`, so the scripts do not check its key.
+It gets a new host key on every `--fresh`, so the scripts do not check its key,
+and they refuse such a target unless `TARGET_NAME` is `test`.
 Every other target is checked against `ssh/known_hosts`, and the scripts refuse
 to start without a record. An unchecked key lets a device that wins an ARP race
 receive every secret as extra-vars. Record the key once, from a session you
