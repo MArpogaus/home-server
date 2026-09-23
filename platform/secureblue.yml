@@ -1,0 +1,52 @@
+---
+# Every host of this project runs SecureBlue. The playbook targets plain
+# Fedora CoreOS, so these steps live here.
+# harden_container_userns stops rootless Podman with "cannot clone", and ujust
+# owns that module. Rootless Podman is the whole architecture.
+- name: Read whether container domains may create user namespaces
+  ansible.builtin.command: ujust set-container-userns status
+  register: secureblue_container_userns
+  changed_when: false
+
+- name: Allow container domains to create user namespaces
+  ansible.builtin.command: ujust set-container-userns on
+  when: "'disabled' in secureblue_container_userns.stdout"
+  changed_when: true
+
+# securecore sets AllowTcpForwarding no. Grafana is reachable through a tunnel
+# alone, so the admin user gets `local` back and nothing else.
+- name: Allow local port forwarding for the admin user
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/90-core-forwarding.conf
+    content: |
+      Match User core
+        AllowTcpForwarding local
+      # Ends the Match block, which otherwise scopes every later directive.
+      Match all
+    owner: root
+    mode: '0600'
+    validate: sshd -t -f %s
+  register: secureblue_sshd_dropin
+
+- name: Reload sshd
+  ansible.builtin.systemd:
+    name: sshd.service
+    state: reloaded
+  when: secureblue_sshd_dropin is changed
+
+# The secureblue MOTD runs in every shell sshd starts, including each Ansible
+# round trip. This file is its opt-out.
+- name: Silence the MOTD for the admin user's SSH sessions
+  ansible.builtin.file:
+    path: "~core/.config/{{ item.name }}"
+    state: "{{ item.state }}"
+    owner: core
+    group: core
+    mode: "{{ item.mode }}"
+    modification_time: preserve
+    access_time: preserve
+  loop:
+    - {name: "", state: directory, mode: "0700"}
+    - {name: no-show-user-motd, state: touch, mode: "0600"}
+  loop_control:
+    label: "{{ item.name | default('.config', true) }}"
