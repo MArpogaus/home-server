@@ -347,7 +347,7 @@ default. The ones whose default is not the whole story:
 
 | Var | Note |
 |---|---|
-| `base_setup_backup_targets` | `[]` means no off-box backup. A target that leaves the list loses its config file and its backup metric on the next deploy |
+| `base_setup_backup_targets` | `[]` means no off-box backup. Removing a target from the list is manual: delete `/etc/btrfs-backup/<name>.conf`, `/var/lib/node-textfile/backup-<name>.prom` and its crypttab and fstab lines on the host |
 | `base_setup_iscsi_portal` | Set: the deploy logs in to the iSCSI target, with or without a backup target |
 | `base_setup_luks_passphrase` | Required as soon as a backup target is set; one passphrase for every target |
 

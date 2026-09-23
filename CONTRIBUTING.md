@@ -58,5 +58,3 @@ short sentences, one meaning per word, and the condition before the command.
   `coreos-installer` and `butane` images that `ignition/build.sh` pins.
 - A local hook runs `test/test_btrfs_backup.sh` when `btrfs-backup.sh` or the
   test changes. `test/` also holds the VM harness.
-- A local hook runs `test/test_target_paths.yml` when the backup target keep
-  list in `roles/base_setup/vars/main.yml` changes.

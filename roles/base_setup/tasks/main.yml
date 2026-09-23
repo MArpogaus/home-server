@@ -302,18 +302,6 @@
   loop_control:
     label: "{{ item.name }}"
 
-- name: Find the config and metric file of every backup target on the host
-  ansible.builtin.find:
-    paths: [/etc/btrfs-backup, "{{ base_setup_textfile_dir }}"]
-    patterns: ['*.conf', 'backup-*.prom']
-  register: base_setup_target_files
-
-- name: Remove the files of a target that is no longer listed
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop: "{{ base_setup_target_files.files | map(attribute='path') | reject('in', base_setup_target_paths) | list }}"
-
 - name: Register each backup target in crypttab
   ansible.builtin.lineinfile:
     path: /etc/crypttab

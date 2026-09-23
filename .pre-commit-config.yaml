@@ -41,10 +41,3 @@ repos:
         language: script
         files: (btrfs-backup\.sh|test_btrfs_backup\.sh)$
         pass_filenames: false
-      - id: test-target-paths
-        name: backup target keep list
-        entry: ansible-playbook -i localhost, test/test_target_paths.yml
-        language: python
-        additional_dependencies: [ansible-core==2.21.4]
-        files: (roles/base_setup/vars/main\.yml|test_target_paths\.yml)$
-        pass_filenames: false
