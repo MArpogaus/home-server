@@ -1,0 +1,18 @@
+---
+# What this deployment runs. base_setup configures a host; this says what the
+# host is for, so the role carries no service names of its own.
+#
+# uid is fixed per service and must not change: it decides the subuid range,
+# and every image layer and data file is owned inside that range.
+base_setup_services:
+  - name: nextcloud
+    uid: 82
+    repo: nextcloud
+  - name: proxy
+    uid: 1001
+    repo: bunker
+  - name: monitoring
+    uid: 1002
+    repo: monitoring
+    # Alloy reads the host journal.
+    groups: [systemd-journal]
