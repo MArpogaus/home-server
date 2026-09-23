@@ -65,7 +65,7 @@
            | map('regex_replace', '@[^@]*$', '') | map('regex_replace', ':[^:/]+$', '') | list }}
   vars:
     base_setup_role_defaults: >-
-      {{ playbook_dir }}/../home-server-{{ svc.repo }}/ansible-role/{{ svc.repo }}_service/defaults/main.yml
+      {{ svc.dir }}/ansible-role/{{ svc.repo }}_service/defaults/main.yml
   loop: "{{ base_setup_services }}"
   loop_control:
     loop_var: svc
