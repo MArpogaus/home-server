@@ -453,7 +453,10 @@ run0 systemctl reboot
 **A service.** The snapshots are read-only subvolumes under
 `/var/services/snapshots/<service>/<date>`. Use the restore steps above, with
 `run0 btrfs subvolume snapshot /var/services/snapshots/<service>/<date> /var/services/<service>`
-(writable, so no `-r`) in place of the send and receive.
+(writable, so no `-r`) in place of the send and receive. The snapshot lands at
+its final path and is writable, so the `mv /var/services/<date>` and the
+`btrfs property set` steps are skipped. A snapshot does not carry the nested
+`custom_apps` either, so that step stays.
 
 ### Troubleshooting
 
