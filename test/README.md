@@ -22,7 +22,7 @@ The guest's SSH is on host port 2222, its HTTP on 8080 and its HTTPS on 8443,
 bound to `127.0.0.1`. `--listen <address>` binds another address
 (`../README.md`, "A controller in a container", says what that opens).
 
-The guest gets 8 GB and 2 vCPUs, which match the target thin client. With
+The guest gets 8 GB, the memory of the target thin client, and 2 vCPUs. With
 `mkpasswd` installed the console password is `VM_PASSWORD` (default `test`);
 without it the guest has none.
 
