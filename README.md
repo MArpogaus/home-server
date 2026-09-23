@@ -306,7 +306,7 @@ default, so the shell profile exports the variable. Edit a file with
 |---|---|---|---|
 | `nextcloud_service_db_password` | yes | | PostgreSQL |
 | `nextcloud_service_admin_password` | yes | | Nextcloud admin |
-| `nextcloud_service_app_image` | no | `ghcr.io/marpogaus/nextcloud:35` | App image |
+| `nextcloud_service_app_image` | no | the role's `defaults/main.yml` | App image; a host opts into the dev branch's `:<major>-dev` |
 | `nextcloud_hostname` | yes | | Nextcloud's public hostname; the proxy site and the trusted domain follow from it |
 | `bunker_service_letsencrypt_email` | no | `""` | ACME contact; empty registers `contact@<server name>` |
 | `bunker_service_generate_self_signed_ssl` | no | `no` | `yes` only for a host without public DNS |
