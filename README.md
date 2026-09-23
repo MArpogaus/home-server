@@ -265,7 +265,12 @@ openssl rand -base64 48 | tr -d '/+=' | cut -c1-48
 ```
 
 The Nextcloud passwords are an exception to this rule. Each dump names the
-database role, and a person types the admin password on a phone.
+database role, and a person types the admin password on a phone. The ntfy token
+has a fixed format:
+
+```bash
+echo "tk_$(openssl rand -hex 15 | cut -c1-29)"
+```
 
 ### Platform variables
 
