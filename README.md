@@ -285,10 +285,6 @@ default. The ones whose default is not the whole story:
 `vars.yml` holds what both hosts share, including the public hostnames.
 `vars.test.yml` and `vars.t630.yml` override it; read them for what differs.
 
-A restore of a copy from another host is the risk. The dump creates the roles
-that it names again. Thus the database credentials here must agree with the
-source host.
-
 ## Adding a service
 
 1. Copy `home-server-template` to `home-server-<name>`. Replace `__NAME__` with
