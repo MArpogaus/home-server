@@ -58,20 +58,45 @@ Three references move by hand:
 
 ## Deploy
 
+The controller needs what `home-server-core/README.md`, "Usage", lists
+(Ansible Core, the collections, `passlib` and `bcrypt`) and, for the test VM,
+what `home-server-core/test/README.md`, "Requirements", lists. The commands run
+from `home-server-deploy/`:
+
 ```bash
+cd home-server-deploy
+cp ../home-server-secrets/ssh/coreos_key{,.pub} ../home-server-core/test/
 # Terminal 1: the VM, on its serial console
-python3 ../home-server-core/test/start_vm.py --fresh \
-  --platform platform/secureblue.bu
+python3 ../home-server-core/test/start_vm.py --fresh --platform platform/secureblue.bu
 # Terminal 2, once the VM has rebased and rebooted
+ssh -p 2222 -i ../home-server-core/test/coreos_key -o IdentitiesOnly=yes \
+  core@127.0.0.1 systemctl is-active install-secureblue.service   # inactive
 ./deploy.sh
 ./functional_test.sh
 ```
 
-`home-server-secrets` holds the variables and the test key. A new deployment
-starts its secrets repository from the `*.example` files and encrypts each
-file that holds a credential (`home-server-secrets/README.md`, "Vault").
-`start_vm.py` creates `test/coreos_key` when it is missing; a new key then
-goes to `ssh/coreos_key` in the secrets repository.
+The VM boots with the key in `home-server-core/test/`, and the scripts log in
+with `ssh/coreos_key` of the secrets repository, so the two hold the same pair.
+`start_vm.py` publishes the VM's ports on `127.0.0.1`. A controller in a
+container reaches the host through another address: start the VM with
+`--listen 0.0.0.0`, or with the host's LAN address, and run the scripts with
+`TEST_VM=1 TARGET_HOST=<that address>`.
+
+A new deployment creates its secrets repository from this repository's
+templates. `start_vm.py` creates a key pair in `home-server-core/test/` when
+none is there, and that pair goes to the secrets repository:
+
+```bash
+mkdir -p ../home-server-secrets/secrets ../home-server-secrets/ssh
+cp secrets.example/vars.yml.example ../home-server-secrets/secrets/vars.yml
+cp secrets.example/vars.host.yml.example ../home-server-secrets/secrets/vars.test.yml
+# Fill in the values, then encrypt both files.
+ansible-vault encrypt ../home-server-secrets/secrets/vars.yml ../home-server-secrets/secrets/vars.test.yml
+cp ../home-server-core/test/coreos_key{,.pub} ../home-server-secrets/ssh/
+```
+
+`home-server-secrets/README.md`, "Vault", has the password file that
+`ansible-vault` and the scripts read.
 
 Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 
