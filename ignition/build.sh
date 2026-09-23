@@ -13,10 +13,10 @@
 # rebase to a derivative image. It is merged into the config.
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE="${HERE}/config.bu.template"
-BUTANE_CONFIG="${HERE}/config.bu"
-IGNITION="${HERE}/config.ign"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEMPLATE="${SCRIPT_DIR}/config.bu.template"
+BUTANE_CONFIG="${SCRIPT_DIR}/config.bu"
+IGNITION="${SCRIPT_DIR}/config.ign"
 INSTALLER_IMAGE="quay.io/coreos/coreos-installer:release@sha256:2c94387e76ae351a4183f29707fd7be57a9290675524391bdb17b40de1e088ff"
 
 usage() { echo "usage: $0 [--platform <file.bu>] [ign | install /dev/sdX | iso <live.iso> /dev/sdX]"; exit 1; }
@@ -40,7 +40,7 @@ iso)
 	[ -f "${SRC_ISO}" ] || {
 		echo "ERROR: no such file: ${SRC_ISO}"
 		echo "       Fetch the live ISO into this directory first:"
-		echo "       podman run --rm -v \"${HERE}\":/data:z -w /data \\"
+		echo "       podman run --rm -v \"${SCRIPT_DIR}\":/data:z -w /data \\"
 		echo "           ${INSTALLER_IMAGE} download -s stable -p metal -f iso"
 		exit 1
 	}
@@ -49,7 +49,7 @@ iso)
 esac
 
 BUTANE=(podman run --rm -i --security-opt label=disable
-	-v "${HERE}":/pwd -w /pwd quay.io/coreos/butane:release@sha256:d264fba5a02ec7a5525b7cd4ab04090e8c70d0ee42a74a90a0e2f89633ae720c)
+	-v "${SCRIPT_DIR}":/pwd -w /pwd quay.io/coreos/butane:release@sha256:d264fba5a02ec7a5525b7cd4ab04090e8c70d0ee42a74a90a0e2f89633ae720c)
 
 SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY:-}"
 if [ -z "${SSH_PUBLIC_KEY}" ]; then
@@ -79,12 +79,12 @@ printf '%s\n' "${config}" > "${BUTANE_CONFIG}"
 if [ "${PASSWORD_HASH}" = "none" ]; then
 	sed -i '/password_hash:/d' "${BUTANE_CONFIG}"
 fi
-rm -f "${HERE}/platform.ign"
+rm -f "${SCRIPT_DIR}/platform.ign"
 if [ -n "${PLATFORM}" ]; then
-	"${BUTANE[@]}" --strict < "${PLATFORM}" > "${HERE}/platform.ign"
+	"${BUTANE[@]}" --strict < "${PLATFORM}" > "${SCRIPT_DIR}/platform.ign"
 	printf 'ignition:\n  config:\n    merge:\n      - local: platform.ign\n' >> "${BUTANE_CONFIG}"
 fi
-(cd "${HERE}" && "${BUTANE[@]}" --pretty --strict --files-dir . config.bu) > "${IGNITION}"
+(cd "${SCRIPT_DIR}" && "${BUTANE[@]}" --pretty --strict --files-dir . config.bu) > "${IGNITION}"
 echo "Wrote ${IGNITION}"
 
 case "${MODE}" in
@@ -93,19 +93,19 @@ install)
 	read -rp "Type the device again to confirm: " confirm
 	[ "${confirm}" = "${DEVICE}" ] || { echo "Aborted."; exit 1; }
 	sudo podman run --pull=always --privileged --rm \
-		-v /dev:/dev -v /run/udev:/run/udev -v "${HERE}":/data -w /data \
+		-v /dev:/dev -v /run/udev:/run/udev -v "${SCRIPT_DIR}":/data -w /data \
 		"${INSTALLER_IMAGE}" \
 		install "${DEVICE}" -i config.ign
 	;;
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
 	podman run --pull=always --rm \
-		-v "${HERE}":/data:z -v "${SRC_DIR}":/iso:z -w /data \
+		-v "${SCRIPT_DIR}":/data:z -v "${SRC_DIR}":/iso:z -w /data \
 		"${INSTALLER_IMAGE}" \
 		iso customize --force --dest-ignition config.ign \
 		--dest-device "${DEVICE}" \
 		-o install.iso "/iso/$(basename "${SRC_ISO}")"
-	echo "Wrote ${HERE}/install.iso"
+	echo "Wrote ${SCRIPT_DIR}/install.iso"
 	echo "Booting it installs onto ${DEVICE} and reboots, with no prompt."
 	;;
 esac

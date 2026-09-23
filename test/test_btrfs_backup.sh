@@ -3,8 +3,8 @@
 # PATH and the "subvolumes" are directories, so it needs no Btrfs and no root.
 set -euo pipefail
 
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT="${HERE}/../roles/base_setup/files/btrfs-backup.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT="${SCRIPT_DIR}/../roles/base_setup/files/btrfs-backup.sh"
 # Inside the 90-day retention window the cases configure; DOLD is outside it.
 D1="$(date -d '-3 days' +%F)"
 D2="$(date -d '-2 days' +%F)"
