@@ -189,7 +189,8 @@ def main(argv=None):
         build_ignition(args.platform)
         ignition_args = ["-fw_cfg", f"name=opt/com.coreos/config,file={IGNITION}"]
 
-    print(f"SSH: ssh -p {SSH_PORT} -i {SSH_KEY} core@localhost   Stop: Ctrl+C")
+    print(f"SSH: ssh -p {SSH_PORT} -i {SSH_KEY} -o StrictHostKeyChecking=no "
+          f"-o UserKnownHostsFile=/dev/null core@localhost   Stop: Ctrl+C")
     boot(ignition_args, args.listen)
     return 0
 

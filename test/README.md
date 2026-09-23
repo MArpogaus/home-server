@@ -46,8 +46,8 @@ Two levels, cheapest first.
 Do this once, after the platform steps have finished:
 
 ```bash
-ssh -p 2222 -i coreos_key core@localhost rpm-ostree status   # expect the platform image
-ssh -p 2222 -i coreos_key core@localhost run0 systemctl poweroff
+ssh -p 2222 -i coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@localhost rpm-ostree status   # expect the platform image
+ssh -p 2222 -i coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null core@localhost run0 systemctl poweroff
 python3 start_vm.py --save-base
 ```
 

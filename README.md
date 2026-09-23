@@ -149,6 +149,7 @@ Once the VM has rebased and rebooted, deploy and test it:
 
 ```bash
 ssh -p 2222 -i test/coreos_key -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   core@127.0.0.1 systemctl is-active install-secureblue.service   # inactive
 ./deploy.sh
 ./functional_test.sh
@@ -168,6 +169,7 @@ In terminal 2, once the VM has rebased and rebooted:
 
 ```bash
 ssh -p 2222 -i test/coreos_key -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   core@127.0.0.1 systemctl is-active install-secureblue.service   # inactive
 ./deploy.sh && ./functional_test.sh
 ```
