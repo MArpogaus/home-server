@@ -145,16 +145,13 @@ ansible-vault encrypt ../home-server-secrets/secrets/vars.yml ../home-server-sec
 cp test/coreos_key{,.pub} ../home-server-secrets/ssh/
 ```
 
-`home-server-secrets/README.md`, "Vault", has the password file that
-`ansible-vault` and the scripts read.
-
 Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 
 | Variable | Default | Selects |
 |---|---|---|
 | `TARGET_HOST`, `TARGET_PORT` | `127.0.0.1`, `2222` | The address |
 | `TARGET_NAME` | `test` | The host vars, `secrets/vars.<name>.yml`. A name, so a host keeps its settings when its address changes |
-| `ANSIBLE_VAULT_PASSWORD_FILE` | `~/.config/home-server/vault-password` | The Vault password; `home-server-secrets/README.md`, "Vault" |
+| `ANSIBLE_VAULT_PASSWORD_FILE` | `~/.config/home-server/vault-password` | The Vault password; see "Vault" |
 | `SSH_KEY_FILE` | `ssh/coreos_key` | The key file |
 | `SSH_AUTH_KEY` | `file` | `agent` uses the SSH agent. The t630 accepts the YubiKey only |
 | `SERVICES` | every service user on the host | The per-user checks |
@@ -188,6 +185,25 @@ makes eight failed SSH logins to prove that an alert fires, and publishes one
 message titled `functional test` to the target's `alerts` topic.
 It reads Loki through Grafana's datasource proxy with the Grafana admin
 credential, which travels on ssh stdin.
+
+### Vault
+
+Every `secrets/vars*.yml` of the secrets repository that holds a credential is
+encrypted with Ansible Vault. The scripts and `ansible-playbook` read the
+password from `ANSIBLE_VAULT_PASSWORD_FILE`, by default
+`~/.config/home-server/vault-password`. Put the password there once, from the
+password manager:
+
+```bash
+mkdir -p -m 700 ~/.config/home-server
+(umask 077; cat > ~/.config/home-server/vault-password)
+```
+
+Edit a file with `ansible-vault edit secrets/vars.yml`. A new file, such as one
+started from `secrets.example/`, is encrypted once with
+`ansible-vault encrypt secrets/vars.<name>.yml`. For readable diffs, run
+once in the secrets clone:
+`git config diff.ansible-vault.textconv "ansible-vault view"`.
 
 ## Variables
 

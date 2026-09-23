@@ -17,7 +17,7 @@ export ANSIBLE_VAULT_PASSWORD_FILE="${ANSIBLE_VAULT_PASSWORD_FILE:-${HOME}/.conf
 require_vault_password() {
     [[ -s "${ANSIBLE_VAULT_PASSWORD_FILE}" ]] || {
         echo "ERROR: no vault password in ${ANSIBLE_VAULT_PASSWORD_FILE}." >&2
-        echo "       home-server-secrets/README.md, \"Vault\", has the setup." >&2
+        echo "       README.md, \"Vault\", has the setup." >&2
         exit 1
     }
 }
