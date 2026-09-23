@@ -296,9 +296,9 @@ encrypted with Ansible Vault. The scripts read the password from
 `ANSIBLE_VAULT_PASSWORD_FILE`, which they default to
 `~/.config/home-server/vault-password`. `ansible-vault` itself has no such
 default, so the shell profile exports the variable. Edit a file with
-`ansible-vault edit secrets/vars.yml`. With the `.gitattributes` line from "A
-new deployment", this shows readable diffs:
-`git config diff.ansible-vault.textconv "ansible-vault view"`.
+`ansible-vault edit ../home-server-secrets/secrets/vars.yml`. With the
+`.gitattributes` line from "A new deployment", this shows readable diffs:
+`git -C ../home-server-secrets config diff.ansible-vault.textconv "ansible-vault view"`.
 
 ## Variables
 
@@ -577,7 +577,7 @@ initiator name alone admits any device on the LAN that claims it, and LUKS
 keeps such a device from reading the backups, not from overwriting them.
 
 SecureBlue's policy stops iscsid from creating its netlink socket, so the host
-task file must make `iscsid_t` permissive (`secrets/tasks/<host>-pre.yml`, see
+task file must make `iscsid_t` permissive (`tasks/<host>-pre.yml` in the secrets repository, see
 "Host-specific tasks"). The deploy logs in to the target. Format the LUN once by
 hand, with `D=/dev/disk/by-path/<by-path name>`:
 
