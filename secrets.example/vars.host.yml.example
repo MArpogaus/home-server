@@ -17,6 +17,7 @@ monitoring_service_grafana_admin_password: ""
 host_tasks_pre: "{{ playbook_dir }}/platform/secureblue.yml"
 
 # A host without public DNS (the test VM) serves a self-signed certificate.
+# A real host deletes these two lines and gets one from Let's Encrypt.
 bunker_service_generate_self_signed_ssl: "yes"
 bunker_service_auto_lets_encrypt: "no"
 

@@ -218,8 +218,10 @@ rebases to SecureBlue, removes itself and reboots.
    unit is done:
    `ssh core@<host> systemctl is-active install-secureblue.service` prints
    `inactive`.
-5. Record the host key (see "Script settings"), put the host's values in
-   `secrets/vars.<name>.yml`, and deploy an empty host:
+5. Record the host key (see "Script settings"). Copy
+   `secrets.example/vars.host.yml.example` to `secrets/vars.<name>.yml`, fill
+   in the host's values, delete the two certificate lines that only a host
+   without public DNS keeps, encrypt the file, and deploy an empty host:
 
    ```bash
    TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./deploy.sh
