@@ -20,6 +20,14 @@ validate_secrets() {
     echo "✓ Secrets validated"
 }
 
+validate_services() {
+    if git -C "${SCRIPT_DIR}" submodule status | grep -q '^-'; then
+        echo "ERROR: a service repository is not checked out. Run:"
+        echo "       git -C ${SCRIPT_DIR} submodule update --init"
+        exit 1
+    fi
+}
+
 validate_python_deps() {
     "$(ansible_python)/python" -c 'import passlib, bcrypt' 2>/dev/null \
         || { echo "ERROR: Ansible's Python lacks passlib and bcrypt. Run: uv tool install --reinstall ansible --with passlib --with bcrypt"; exit 1; }
@@ -48,6 +56,7 @@ notify() {
 }
 
 validate_secrets
+validate_services
 ssh_opts
 validate_python_deps
 ansible-galaxy collection install -r "${SCRIPT_DIR}/requirements.yml" >/dev/null
