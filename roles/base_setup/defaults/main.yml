@@ -25,6 +25,8 @@ base_setup_backup_retention_days: 90
 base_setup_iscsi_portal: ""
 base_setup_iscsi_target: ""
 base_setup_iscsi_lun: 0
+base_setup_iscsi_chap_user: ""
+base_setup_iscsi_chap_password: ""
 base_setup_iscsi_initiator: "iqn.2026-01.local.homeserver:{{ inventory_hostname }}"
 base_setup_iscsi_device: >-
   /dev/disk/by-path/ip-{{ base_setup_iscsi_portal }}:3260-iscsi-{{ base_setup_iscsi_target }}-lun-{{ base_setup_iscsi_lun }}

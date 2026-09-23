@@ -23,6 +23,9 @@
     discover: true
     login: true
     auto_node_startup: true
+    node_user: "{{ base_setup_iscsi_chap_user | default(omit, true) }}"
+    node_pass: "{{ base_setup_iscsi_chap_password | default(omit, true) }}"
+  no_log: "{{ base_setup_iscsi_chap_password | length > 0 }}"
 
 - name: Wait for the LUN to appear
   ansible.builtin.wait_for:

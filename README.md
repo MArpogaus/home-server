@@ -537,8 +537,14 @@ on it. Permit this host's initiator name,
 ```yaml
 base_setup_iscsi_portal: <nas address>
 base_setup_iscsi_target: iqn.<vendor>:<target>
+base_setup_iscsi_chap_user: <user>
+base_setup_iscsi_chap_password: "<password>"
 base_setup_luks_passphrase: "<passphrase>"
 ```
+
+Require CHAP for the target on the NAS, with the same user and password. The
+initiator name alone admits any device on the LAN that claims it, and LUKS
+keeps such a device from reading the backups, not from overwriting them.
 
 SecureBlue's policy stops iscsid from creating its netlink socket, so the host
 task file must make `iscsid_t` permissive
