@@ -139,12 +139,9 @@
   ansible.builtin.systemd_service:
     name: "{{ quadlet_service_pod }}-pod.service"
     scope: user
-    daemon_reload: "{{ quadlet_service_archive is changed or quadlet_service_removed is changed }}"
-    state: "{{ 'restarted' if quadlet_service_changed else 'started' }}"
+    daemon_reload: "{{ quadlet_service_files_changed }}"
+    state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_files_changed else 'started' }}"
   become: true
   become_user: "{{ service_name }}"
   vars:
-    quadlet_service_changed: >-
-      {{ quadlet_service_restart | bool
-         or quadlet_service_archive is changed
-         or quadlet_service_removed is changed }}
+    quadlet_service_files_changed: "{{ quadlet_service_archive is changed or quadlet_service_removed is changed }}"
