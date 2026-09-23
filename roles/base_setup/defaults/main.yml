@@ -32,6 +32,3 @@ base_setup_iscsi_device: >-
   /dev/disk/by-path/ip-{{ base_setup_iscsi_portal }}:3260-iscsi-{{ base_setup_iscsi_target }}-lun-{{ base_setup_iscsi_lun }}
 base_setup_luks_keyfile: /etc/luks/backup.key
 base_setup_luks_passphrase: ""
-
-# Images from this registry must carry a signature from the project's cosign key.
-base_setup_signed_registry: ghcr.io/marpogaus

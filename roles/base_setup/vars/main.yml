@@ -1,4 +1,7 @@
 ---
+# The Ignition config installs the key for this registry, so both stay fixed.
+base_setup_signed_registry: ghcr.io/marpogaus
+
 base_setup_target_paths: >-
   {{ (base_setup_backup_targets | map(attribute='name')
       | map('regex_replace', '^', '/etc/btrfs-backup/') | map('regex_replace', '$', '.conf') | list)
