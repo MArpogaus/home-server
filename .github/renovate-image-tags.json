@@ -18,7 +18,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|/)(ansible-role|roles)/[^/]+/defaults/main\\.yml$/"
+        "/(^|/)ansible-role/[^/]+/defaults/main\\.yml$/"
       ],
       "matchStrings": [
         "_image:\\s*[\"']?(?<depName>[^\"'\\s:@]+):(?<currentValue>[^\"'\\s@]+)[\"']?"
