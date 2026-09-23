@@ -14,7 +14,7 @@ monitoring_service_grafana_admin_password: ""
 
 # A SecureBlue host needs the platform steps. A host with steps of its own names
 # its own file, which includes this one.
-host_tasks_pre: "{{ deploy_dir }}/platform/secureblue.yml"
+host_tasks_pre: "{{ playbook_dir }}/platform/secureblue.yml"
 
 # A host without public DNS (the test VM) serves a self-signed certificate.
 bunker_service_generate_self_signed_ssl: "yes"
