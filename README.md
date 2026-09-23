@@ -61,8 +61,8 @@ cd ../home-server-secrets
 cp secrets/vars.yml.example secrets/vars.yml                  # only what differs from the defaults
 cp secrets/vars.host.yml.example secrets/vars.test.yml        # and one per host
 cd ../home-server-deploy
-PLATFORM_BU="$PWD/../home-server-secrets/ignition/secureblue.bu" \
-  python3 ../home-server-core/test/start_vm.py --fresh        # the VM, and the key below
+python3 ../home-server-core/test/start_vm.py --fresh \
+  --platform ../home-server-secrets/ignition/secureblue.bu    # the VM, and the key below
 cp ../home-server-core/test/coreos_key ../home-server-secrets/ssh/coreos_key
 ./deploy.sh
 ./functional_test.sh
@@ -242,8 +242,8 @@ Replace `nextcloud` with `proxy` or `monitoring`. A root command is
 real hardware. It sets up the Btrfs root, the SSH key, the cosign public key,
 the polkit rule that lets `run0` escalate without a password, and a first-boot
 unit that layers python3 when the image has none.
-`PLATFORM_BU=<absolute path>/home-server-secrets/ignition/secureblue.bu` adds
-the unit that rebases to SecureBlue, removes itself and reboots.
+`--platform ../../home-server-secrets/ignition/secureblue.bu` adds the unit that
+rebases to SecureBlue, removes itself and reboots.
 
 1. Point DNS at the public address of the machine. Forward ports 80 and 443
    from the router, and no other port. Let's Encrypt validates over port 80,
@@ -257,19 +257,19 @@ the unit that rebases to SecureBlue, removes itself and reboots.
 
    ```bash
    cd home-server-core/ignition
-   export PLATFORM_BU="$PWD/../../home-server-secrets/ignition/secureblue.bu"
    podman run --rm -v "$PWD":/data:z -w /data \
      quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
-   ./build.sh ign                       # render config.ign only; read it
-   ./build.sh iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
+   P=../../home-server-secrets/ignition/secureblue.bu
+   ./build.sh --platform $P ign         # render config.ign only; read it
+   ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
    ```
 
-   `./build.sh install /dev/sdX` writes a disk attached to this computer
-   instead, and needs `sudo podman`. `build.sh` needs `podman`. It authorises
-   the smartcard key from your SSH agent, the key whose comment contains
-   `cardno:`, unless `SSH_PUBLIC_KEY` names another. It asks for a console
-   password, which is for the machine's own console; SSH refuses passwords.
-   `PASSWORD_HASH=none` leaves the console without one.
+   `./build.sh --platform $P install /dev/sdX` writes a disk attached to this
+   computer instead, and needs `sudo podman`. `build.sh` needs `podman`. It
+   authorises the smartcard key from your SSH agent, the key whose comment
+   contains `cardno:`, unless `SSH_PUBLIC_KEY` names another. It asks for a
+   console password, which is for the machine's own console; SSH refuses
+   passwords. `PASSWORD_HASH=none` leaves the console without one.
 
    CAUTION: `install.iso` installs onto the named device of the target and
    reboots, with no prompt. It erases that disk.
