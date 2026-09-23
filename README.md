@@ -195,7 +195,7 @@ Every other target is checked against `ssh/known_hosts`, and the scripts refuse
 to start without a record. An unchecked key lets a device that wins an ARP race
 receive every secret as extra-vars. Record the key once, from a session you
 trust, and compare the fingerprint with the console:
-`ssh-keyscan -H -p <port> <host> 2>/dev/null >> ssh/known_hosts`.
+`ssh-keyscan -H -p <port> <host> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts`.
 
 `deploy.sh` checks the secrets, the Vault password, the SSH identity and that
 Ansible's Python has `passlib` and `bcrypt` ("Requirements"). It
