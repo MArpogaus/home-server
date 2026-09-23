@@ -89,10 +89,18 @@ Open:
   review that matters happens in that repository.
 - Unattended updates reach production with no gate.
 - The test VM is root for anyone who holds its key: `ssh/coreos_key` has no
-  passphrase, and `core` escalates without one. The VM holds throwaway
-  credentials of its own, so it gives nothing that production accepts.
-  `start_vm.py` publishes its ports on `127.0.0.1`; `--listen` with another
-  address opens them to that network.
+  passphrase, and `core` escalates without one. The VM gets the credentials
+  of `secrets/vars.test.yml`, which no other host accepts. A VM disk keeps
+  the values of every deploy it received, so a disk that received another
+  host's values is deleted. `start_vm.py` publishes its ports on `127.0.0.1`;
+  `--listen` with another address opens them to that network.
+- Without CHAP (`base_setup_iscsi_chap_*`), the NAS admits any device on the
+  LAN that claims this host's initiator name. LUKS keeps such a device from
+  reading the backups, not from overwriting them.
+- A service repository's `monitoring/alloy-drop.txt` drops lines of that
+  service before Loki stores them, and `alloy-redact.txt` rewrites them. A
+  pattern that matches text a client controls hides that client's lines, so
+  each pattern is anchored to a field the service writes itself.
 - Git history, unreferenced GitHub objects and other clones can hold
   plaintext credentials. Every value that was ever plaintext is rotated. A
   LUKS header backup accepts every passphrase its key slots held when it was
