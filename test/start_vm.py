@@ -6,6 +6,7 @@ Stdlib only.
 """
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -15,6 +16,8 @@ import urllib.request
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FCOS_VERSION = "44.20260510.3.1"
+# images.qemu.sha256 of the build's meta.json; it moves with FCOS_VERSION.
+FCOS_SHA256 = "b8f0ae906a1ff357b9f5e62eb7f64ee19a42d01a16d9ac4d2132380601aa84da"
 DISK = os.path.join(TEST_DIR, "fcos.qcow2")
 DISK_XZ = DISK + ".xz"
 BUILD_SH = os.path.join(TEST_DIR, os.pardir, "ignition", "build.sh")
@@ -103,6 +106,13 @@ def ensure_disk(fresh):
         if not os.path.exists(DISK_XZ):
             print(f"Downloading Fedora CoreOS {FCOS_VERSION}")
             urllib.request.urlretrieve(URL, DISK_XZ)
+        digest = hashlib.sha256()
+        with open(DISK_XZ, "rb") as handle:
+            for block in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(block)
+        if digest.hexdigest() != FCOS_SHA256:
+            os.remove(DISK_XZ)
+            fail(f"{DISK_XZ} does not match FCOS_SHA256; deleted it")
         print("Extracting disk image")
         subprocess.run(["unxz", "-k", DISK_XZ], check=True)
         subprocess.run(["qemu-img", "resize", DISK, DISK_SIZE], check=True)
