@@ -99,6 +99,8 @@ check_output "This project's registry needs a signature" \
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so these catch a missing z or Z on a fresh
 # host only.
+check_user_output nextcloud "Nextcloud logs to the journal" \
+  "podman exec -u www-data nextcloud-app php occ log:manage" "backend: syslog"
 check_output "Nextcloud's files are container_file_t" \
   "stat -c %C /var/services/nextcloud/data/data" "container_file_t"
 check_output "Alloy's config is relabelled for the container" \
