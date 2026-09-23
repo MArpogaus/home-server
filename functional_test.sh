@@ -20,10 +20,12 @@ pass() { PASS=$((PASS+1)); echo "  PASS: $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 
 # 255 is ssh's own failure; every other status is the remote command's, which
-# several checks expect to be non-zero while still printing a value.
+# several checks expect to be non-zero while still printing a value. The
+# optional second argument is the remote stdin, so a credential stays off
+# every command line; without it stdin is empty.
 remote() {
   local out rc=0
-  out=$("${SSH[@]}" "$1" </dev/null 2>/dev/null) || rc=$?
+  out=$(printf '%s' "${2-}" | "${SSH[@]}" "$1" 2>/dev/null) || rc=$?
   [[ ${rc} -eq 255 ]] && { echo "__HOST_UNREACHABLE__"; return 0; }
   printf '%s\n' "${out//$'\r'/}"
 }
@@ -44,10 +46,7 @@ run_user() {
 # datasource proxy. The admin credential travels on ssh stdin.
 GRAFANA_CFG=$(printf 'user = "admin:%s"\n' "$(read_var monitoring_service_grafana_admin_password)")
 run_loki() {
-  local out rc=0
-  out=$(printf '%s' "${GRAFANA_CFG}" | "${SSH[@]}" "bash -c 'cfg=\$(cat); lq() { curl -sf -K <(printf %s \"\$cfg\") \"http://127.0.0.2:3000/api/datasources/proxy/uid/loki\$@\"; }; eval \"\$(echo $(b64 "$1") | base64 -d)\"'" 2>/dev/null) || rc=$?
-  [[ ${rc} -eq 255 ]] && { echo "__HOST_UNREACHABLE__"; return 0; }
-  printf '%s\n' "${out}"
+  remote "bash -c 'cfg=\$(cat); lq() { curl -sf -K <(printf %s \"\$cfg\") \"http://127.0.0.2:3000/api/datasources/proxy/uid/loki\$@\"; }; eval \"\$(echo $(b64 "$1") | base64 -d)\"'" "${GRAFANA_CFG}"
 }
 
 # Both numbers of the ruler's notifier, on one line. A series Loki has not
@@ -189,8 +188,8 @@ check_output "ntfy refuses anonymous publishing" \
   "curl -s -o /dev/null -w %{http_code} -d probe http://127.0.0.1:8081/alerts" "^403$"
 # The token travels on ssh stdin into curl's config, so it is on no command line.
 expect "ntfy accepts the token" \
-  "$(printf 'header = "Authorization: Bearer %s"\n' "$(read_var monitoring_service_ntfy_token)" | "${SSH[@]}" \
-    'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts')" \
+  "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts' \
+    "$(printf 'header = "Authorization: Bearer %s"\n' "$(read_var monitoring_service_ntfy_token)")")" \
   "^200$"
 
 # One burst of failed logins walks the whole path: journald, Alloy, Loki, the
