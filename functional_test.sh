@@ -70,28 +70,6 @@ RULES_HEALTH=$'grep -o \'"health":"[a-z]*"\' | awk \'/err/{e++} /ok/{o++} END{pr
 check_user_output() { expect "$2" "$(run_user "$1" "$3")" "$4"; }
 check_loki() { expect "$1" "$(run_loki "$2")" "$3"; }
 
-# Retried: a deploy that pulled a new image restarts the pod.
-run_for_user() {
-  local user="$1" desc="$2" expected="$3"
-  local actual
-  for _ in $(seq 1 12); do
-    actual=$(run_user "${user}" "podman ps --format {{.Names}}")
-    local missing=0
-    for container in $expected; do
-      echo "$actual" | grep -q "$container" || missing=1
-    done
-    [[ ${missing} -eq 0 ]] && break
-    sleep 10
-  done
-  for container in $expected; do
-    if echo "$actual" | grep -q "$container"; then
-      pass "$desc: $container running"
-    else
-      fail "$desc: $container NOT running (found: $(echo "$actual" | tr '\n' ' '))"
-    fi
-  done
-}
-
 echo "=== Functional tests ==="
 echo ""
 
@@ -146,15 +124,19 @@ for svc in ${SERVICES}; do
 done
 
 echo "--- Containers ---"
-run_for_user nextcloud "Nextcloud" "nextcloud-db nextcloud-redis nextcloud-app nextcloud-web nextcloud-cron nextcloud-preview nextcloud-recognize nextcloud-push"
-run_for_user proxy "Bunker" "bunker-nginx bunker-scheduler"
-run_for_user monitoring "Monitoring" "monitoring-loki monitoring-alloy monitoring-prometheus monitoring-alertmanager monitoring-grafana monitoring-node-exporter monitoring-ntfy monitoring-blackbox"
-
-echo "--- Health ---"
-# Both counts: a podman that cannot run reports no unhealthy container either.
-HEALTH_CMD="echo healthy=\$(podman ps --filter health=healthy -q | wc -l) unhealthy=\$(podman ps --filter health=unhealthy -q | wc -l)"
-check_user_output nextcloud "Nextcloud containers report healthy" "${HEALTH_CMD}" "^healthy=[1-9][0-9]* unhealthy=0$"
-check_user_output monitoring "Monitoring containers report healthy" "${HEALTH_CMD}" "^healthy=[1-9][0-9]* unhealthy=0$"
+# Every Quadlet container of a service runs, and none reports unhealthy. Retried:
+# a deploy that pulled a new image restarts the pod.
+# shellcheck disable=SC2016  # expanded by the service user's shell
+CONTAINERS_CMD='units=$(ls "$HOME"/.config/containers/systemd/*.container | xargs -n1 basename | sed "s/\.container$/.service/")
+echo "units=$(echo $units | wc -w) inactive=$(systemctl --user is-active $units | grep -cvx active) unhealthy=$(podman ps --filter health=unhealthy -q | wc -l)"'
+for svc in ${SERVICES}; do
+  for _ in $(seq 1 12); do
+    out=$(run_user "${svc}" "${CONTAINERS_CMD}")
+    grep -q "inactive=0 unhealthy=0$" <<<"${out}" && break
+    sleep 10
+  done
+  expect "Containers of ${svc} run and none is unhealthy" "${out}" "^units=[1-9][0-9]* inactive=0 unhealthy=0$"
+done
 
 echo "--- Nextcloud via host port (BunkerWeb upstream path) ---"
 check_output "status.php answers on 8080" "curl -sf http://127.0.0.1:8080/status.php" '"installed":true'
