@@ -85,9 +85,9 @@ Open:
   host's policy. An image added there is accepted without a signature, so the
   review that matters happens in that repository.
 - Unattended updates reach production with no gate.
-- Unreferenced GitHub objects and other clones can hold plaintext values
-  that the host no longer accepts once it runs the vault's values. A LUKS
-  header backup accepts every passphrase its key slots held when it was
+- Git history, unreferenced GitHub objects and other clones can hold
+  plaintext credentials. Every value that was ever plaintext is rotated. A
+  LUKS header backup accepts every passphrase its key slots held when it was
   taken.
 
 SELinux exceptions this project makes, and why:
