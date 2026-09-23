@@ -106,7 +106,7 @@
                                                   'keyPath': '/etc/pki/containers/marpogaus-cosign.pub',
                                                   'signedIdentity': {'type': 'matchRepository'}}]}) }}
 
-- name: Deploy the snapshot and backup units
+- name: Deploy the snapshot, backup and auto-reboot units
   ansible.builtin.template:
     src: "{{ item }}.j2"
     dest: /etc/systemd/system/{{ item }}
@@ -115,20 +115,8 @@
     - btrfs-snapshot@.service
     - btrfs-snapshot@.timer
     - btrfs-backup@.service
-  notify: Reload systemd
-
-- name: Deploy the auto-reboot service
-  ansible.builtin.template:
-    src: auto-reboot-staged.service.j2
-    dest: /etc/systemd/system/auto-reboot-staged.service
-    mode: "0644"
-  notify: Reload systemd
-
-- name: Deploy the auto-reboot timer
-  ansible.builtin.copy:
-    src: auto-reboot-staged.timer
-    dest: /etc/systemd/system/auto-reboot-staged.timer
-    mode: "0644"
+    - auto-reboot-staged.service
+    - auto-reboot-staged.timer
   notify: Reload systemd
 
 - name: Deploy the snapshot and backup scripts
