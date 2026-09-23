@@ -313,10 +313,6 @@
     path: "{{ item }}"
     state: absent
   loop: "{{ base_setup_target_files.files | map(attribute='path') | reject('in', base_setup_target_paths) | list }}"
-  vars:
-    base_setup_target_paths: >-
-      {{ (base_setup_backup_targets | map(attribute='name') | map('regex_replace', '^(.+)$', '/etc/btrfs-backup/\\1.conf') | list)
-         + (base_setup_backup_targets | map(attribute='name') | map('regex_replace', '^(.+)$', '/var/lib/node-textfile/backup-\\1.prom') | list) }}
 
 - name: Register each backup target in crypttab
   ansible.builtin.lineinfile:
