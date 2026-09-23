@@ -1,9 +1,7 @@
 ---
 # What this deployment runs. base_setup configures a host; this says what the
 # host is for, so the role carries no service names of its own.
-#
-# uid is fixed per service and must not change: it decides the subuid range,
-# and every image layer and data file is owned inside that range.
+# A uid never changes: home-server-core/README.md, "Adding a service".
 base_setup_services:
   - name: nextcloud
     uid: 82
