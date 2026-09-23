@@ -9,4 +9,4 @@ Environment=BTRFS_SNAPSHOT_DIR={{ base_setup_btrfs_snapshot_dir }}
 Environment=BTRFS_SNAPSHOT_RETENTION_DAYS={{ base_setup_btrfs_snapshot_retention_days }}
 Environment=BTRFS_SERVICES_DIR={{ base_setup_services_dir }}
 Environment=NODE_TEXTFILE_DIR=/var/lib/node-textfile
-ExecStart=/usr/local/bin/btrfs-snapshot-cleanup.sh %i
+ExecStart=/usr/local/bin/btrfs-snapshot.sh %i

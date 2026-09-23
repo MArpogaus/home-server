@@ -125,7 +125,7 @@
     dest: /usr/local/bin/{{ item }}
     mode: "0755"
   loop:
-    - btrfs-snapshot-cleanup.sh
+    - btrfs-snapshot.sh
     - btrfs-backup.sh
 
 - name: Load the new units
