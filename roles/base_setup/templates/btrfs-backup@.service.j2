@@ -9,5 +9,5 @@ Type=oneshot
 TimeoutStartSec=12h
 Environment=BTRFS_SNAPSHOT_DIR={{ base_setup_btrfs_snapshot_dir }}
 Environment=BACKUP_ROOT={{ base_setup_backup_root }}
-Environment=NODE_TEXTFILE_DIR=/var/lib/node-textfile
+Environment=NODE_TEXTFILE_DIR={{ base_setup_textfile_dir }}
 ExecStart=systemd-inhibit --what=shutdown --who=btrfs-backup@%i --why="incremental send in progress" /usr/local/bin/btrfs-backup.sh %i

@@ -134,12 +134,12 @@
 # Readable by rootless containers without a relabel. README.md, "Metrics".
 - name: Label the textfile metrics directory for containers
   community.general.sefcontext:
-    target: /var/lib/node-textfile(/.*)?
+    target: "{{ base_setup_textfile_dir }}(/.*)?"
     setype: container_ro_file_t
 
 - name: Ensure the textfile metrics directory exists
   ansible.builtin.file:
-    path: /var/lib/node-textfile
+    path: "{{ base_setup_textfile_dir }}"
     state: directory
     owner: root
     mode: "0755"
@@ -148,7 +148,7 @@
 # A job that never succeeds then reads as stale 30 h after the first deploy.
 - name: Seed the snapshot metrics
   ansible.builtin.copy:
-    dest: /var/lib/node-textfile/snapshot-{{ item.name }}.prom
+    dest: "{{ base_setup_textfile_dir }}/snapshot-{{ item.name }}.prom"
     content: "snapshot_last_success_timestamp_seconds{service=\"{{ item.name }}\"} {{ ansible_facts.date_time.epoch }}\n"
     force: false
     owner: root
@@ -292,7 +292,7 @@
 
 - name: Seed the backup metrics
   ansible.builtin.copy:
-    dest: /var/lib/node-textfile/backup-{{ item.name }}.prom
+    dest: "{{ base_setup_textfile_dir }}/backup-{{ item.name }}.prom"
     content: "backup_last_success_timestamp_seconds{target=\"{{ item.name }}\"} {{ ansible_facts.date_time.epoch }}\n"
     force: false
     owner: root
@@ -304,7 +304,7 @@
 
 - name: Find the config and metric file of every backup target on the host
   ansible.builtin.find:
-    paths: [/etc/btrfs-backup, /var/lib/node-textfile]
+    paths: [/etc/btrfs-backup, "{{ base_setup_textfile_dir }}"]
     patterns: ['*.conf', 'backup-*.prom']
   register: base_setup_target_files
 

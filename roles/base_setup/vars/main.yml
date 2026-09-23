@@ -2,8 +2,11 @@
 # The Ignition config installs the key for this registry, so both stay fixed.
 base_setup_signed_registry: ghcr.io/marpogaus
 
+# node-exporter in the monitoring pod mounts this path.
+base_setup_textfile_dir: /var/lib/node-textfile
+
 base_setup_target_paths: >-
   {{ (base_setup_backup_targets | map(attribute='name')
       | map('regex_replace', '^', '/etc/btrfs-backup/') | map('regex_replace', '$', '.conf') | list)
      + (base_setup_backup_targets | map(attribute='name')
-      | map('regex_replace', '^', '/var/lib/node-textfile/backup-') | map('regex_replace', '$', '.prom') | list) }}
+      | map('regex_replace', '^', base_setup_textfile_dir ~ '/backup-') | map('regex_replace', '$', '.prom') | list) }}
