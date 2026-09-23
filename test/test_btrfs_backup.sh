@@ -93,7 +93,7 @@ EOF
 	out="$(PATH="${root}/bin:${PATH}" bash -c \
 		"cd ${root} && sed 's|/etc/btrfs-backup/|${root}/etc/|' ${SCRIPT} > ${root}/s.sh && bash ${root}/s.sh t" 2>&1)" || rc=$?
 	left="$(find "${root}/backup" -mindepth 3 -maxdepth 3 -type d | wc -l)"
-	if [[ -n "${want_name}" && ! -d "${root}/backup/t/nextcloud/${want_name}" ]]; then
+	if [[ -n "${want_name}" && ! -d "${root}/backup/t/svc/${want_name}" ]]; then
 		named="missing ${want_name}"
 	fi
 	if [[ -n "${want_err}" ]] && ! grep -qF "${want_err}" <<<"${out}"; then
@@ -116,22 +116,22 @@ EOF
 setup_no_snapshots() { :; }
 
 setup_first_sync() {
-	mkdir -p "$1/snap/nextcloud/${D1}"
+	mkdir -p "$1/snap/svc/${D1}"
 }
 
 setup_one_partial() {
-	mkdir -p "$1/snap/nextcloud/${D2}"
-	place "$1/backup/t/nextcloud/${D1}" unreceived
+	mkdir -p "$1/snap/svc/${D2}"
+	place "$1/backup/t/svc/${D1}" unreceived
 }
 
 setup_two_partial() {
-	mkdir -p "$1/snap/nextcloud/${D3}"
-	place "$1/backup/t/nextcloud/${D1}" unreceived
-	place "$1/backup/t/nextcloud/${D2}" unreceived
+	mkdir -p "$1/snap/svc/${D3}"
+	place "$1/backup/t/svc/${D1}" unreceived
+	place "$1/backup/t/svc/${D2}" unreceived
 }
 
 setup_named_snapshot() {
-	mkdir -p "$1/snap/nextcloud/${D3}" "$1/snap/nextcloud/${D3}-pre"
+	mkdir -p "$1/snap/svc/${D3}" "$1/snap/svc/${D3}-pre"
 }
 
 setup_refuse_one_of_two() {
@@ -151,18 +151,18 @@ setup_failed_one_of_two() {
 }
 
 setup_field_gone() {
-	mkdir -p "$1/snap/nextcloud/${D3}"
-	place "$1/backup/t/nextcloud/${D1}" nofield
-	place "$1/backup/t/nextcloud/${D2}" nofield
+	mkdir -p "$1/snap/svc/${D3}"
+	place "$1/backup/t/svc/${D1}" nofield
+	place "$1/backup/t/svc/${D2}" nofield
 }
 
 setup_future_snapshot() {
-	mkdir -p "$1/snap/nextcloud/${D3}" "$1/snap/nextcloud/$(date -d '+7 days' +%F)"
+	mkdir -p "$1/snap/svc/${D3}" "$1/snap/svc/$(date -d '+7 days' +%F)"
 }
 
 setup_field_gone_old_partial() {
-	mkdir -p "$1/snap/nextcloud/${D3}"
-	place "$1/backup/t/nextcloud/${DOLD}" nofield-plain
+	mkdir -p "$1/snap/svc/${D3}"
+	place "$1/backup/t/svc/${DOLD}" nofield-plain
 }
 
 echo "=== btrfs-backup.sh ==="
