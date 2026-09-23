@@ -3,9 +3,11 @@
 This repository deploys a home server. It shows what the server runs, on which
 hosts, and how to operate it. This README is the entry point for the project.
 
-The repository holds the inventory and the scripts that deploy and test
-a host. It holds no secret. The credentials and the SSH identities sit in
-`home-server-secrets`, a private repository cloned beside this one.
+The repository holds the inventory, the scripts that deploy and test a host,
+the SecureBlue platform files (`platform/`), templates for the secrets
+(`secrets.example/`) and the hardening notes (`docs/HARDENING.md`). It holds no
+secret. The credentials and the SSH identities sit in `home-server-secrets`, a
+private repository cloned beside this one.
 
 ## The repos
 
@@ -16,7 +18,7 @@ a host. It holds no secret. The credentials and the SSH identities sit in
 | `home-server-bunker` | BunkerWeb reverse proxy pod (WAF, TLS, ntfy site) and role |
 | `home-server-monitoring` | Prometheus, Alertmanager, Grafana, Loki, Alloy, node-exporter, ntfy |
 | `home-server-template` | Skeleton to copy for a new service |
-| `home-server-deploy` | Inventory and the deploy and test scripts |
+| `home-server-deploy` | Inventory, the deploy and test scripts, the platform files, the secrets templates |
 | `home-server-secrets` | The credentials and the SSH identities (**private**) |
 | `image-builder-action` | Reusable GitHub Action that builds and signs images; a deploy does not need it |
 
@@ -59,7 +61,7 @@ Three references move by hand:
 ```bash
 # Terminal 1: the VM, on its serial console
 python3 ../home-server-core/test/start_vm.py --fresh \
-  --platform ../home-server-secrets/ignition/secureblue.bu
+  --platform platform/secureblue.bu
 # Terminal 2, once the VM has rebased and rebooted
 ./deploy.sh
 ./functional_test.sh
@@ -247,7 +249,7 @@ Replace `nextcloud` with `proxy` or `monitoring`. A root command is
 real hardware. It sets up the Btrfs root, the SSH key, the cosign public key,
 the polkit rule that lets `run0` escalate without a password, and a first-boot
 unit that layers python3 when the image has none.
-`--platform ../../home-server-secrets/ignition/secureblue.bu` adds the unit that
+`--platform ../../home-server-deploy/platform/secureblue.bu` adds the unit that
 rebases to SecureBlue, removes itself and reboots.
 
 1. Point DNS at the public address of the machine. Forward ports 80 and 443
@@ -264,7 +266,7 @@ rebases to SecureBlue, removes itself and reboots.
    cd home-server-core/ignition
    podman run --rm -v "$PWD":/data:z -w /data \
      quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
-   P=../../home-server-secrets/ignition/secureblue.bu
+   P=../../home-server-deploy/platform/secureblue.bu
    ./build.sh --platform $P ign         # render config.ign only; read it
    ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
    ```
