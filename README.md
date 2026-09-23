@@ -57,16 +57,19 @@ Three references move by hand:
 ## Deploy
 
 ```bash
-cd ../home-server-secrets
-cp secrets/vars.yml.example secrets/vars.yml                  # only what differs from the defaults
-cp secrets/vars.host.yml.example secrets/vars.test.yml        # and one per host
-cd ../home-server-deploy
+# Terminal 1: the VM, on its serial console
 python3 ../home-server-core/test/start_vm.py --fresh \
-  --platform ../home-server-secrets/ignition/secureblue.bu    # the VM, and the key below
-cp ../home-server-core/test/coreos_key ../home-server-secrets/ssh/coreos_key
+  --platform ../home-server-secrets/ignition/secureblue.bu
+# Terminal 2, once the VM has rebased and rebooted
 ./deploy.sh
 ./functional_test.sh
 ```
+
+`home-server-secrets` holds the variables and the test key. A new deployment
+starts its secrets repository from the `*.example` files and encrypts each
+file that holds a credential (`home-server-secrets/README.md`, "Vault").
+`start_vm.py` creates `test/coreos_key` when it is missing; a new key then
+goes to `ssh/coreos_key` in the secrets repository.
 
 Each `secrets/` and `ssh/` path below is inside `home-server-secrets`.
 
