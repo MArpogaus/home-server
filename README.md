@@ -1,11 +1,19 @@
-# home-server-deploy
+# home-server
 
-This repository deploys a home server. It shows what the server runs, on which
-hosts, and how to operate it. This README is the entry point for the project.
+This repository deploys a home server: the Ansible roles that prepare a Fedora
+CoreOS host for rootless containers, the playbook, the inventory, the scripts
+that deploy and test a host, the Ignition config that installs it, and the test
+VM. It shows what the server runs, on which hosts, and how to operate it. This
+README is the entry point for the project.
 
-The repository holds the inventory, the scripts that deploy and test a host,
-the SecureBlue platform files (`platform/`), templates for the secrets
-(`secrets.example/`) and the hardening notes (`docs/HARDENING.md`). It holds no
+The roles make one unprivileged user and one Btrfs subvolume for each service.
+They also set up snapshots, off-box backup and the firewall. They name no
+service: `base_setup_services` in `inventory/group_vars/homeserver.yml` says
+what the host runs, and each service lives in a repository of its own.
+
+The repository also holds the SecureBlue platform files (`platform/`),
+templates for the secrets (`secrets.example/`), the hardening notes
+(`docs/HARDENING.md`) and the design notes (`docs/DESIGN.md`). It holds no
 secret. The credentials and the SSH identities sit in `home-server-secrets`, a
 private repository cloned beside this one.
 
@@ -13,39 +21,79 @@ private repository cloned beside this one.
 
 | Repo | Purpose |
 |---|---|
-| `home-server-core` | Host setup (Btrfs, users, snapshots, backup, firewall), Ignition, the test VM |
+| `home-server` | Host setup (Btrfs, users, snapshots, backup, firewall), the playbook, Ignition, the test VM, the inventory and the deploy and test scripts |
 | `home-server-nextcloud` | Nextcloud pod, Ansible role, custom image build |
-| `home-server-bunker` | BunkerWeb reverse proxy pod (WAF, TLS, ntfy site) and role |
+| `home-server-bunker` | BunkerWeb reverse proxy pod (WAF, TLS) and role |
 | `home-server-monitoring` | Prometheus, Alertmanager, Grafana, Loki, Alloy, node-exporter, ntfy |
-| `home-server-template` | Skeleton to copy for a new service; `home-server-core/README.md`, "Adding a service", has the checklist |
-| `home-server-deploy` | Inventory, the deploy and test scripts, the platform files, the secrets templates |
+| `home-server-template` | Skeleton to copy for a new service; "Adding a service" has the checklist |
 | `home-server-secrets` | The credentials and the SSH identities (**private**) |
 | `image-builder-action` | Reusable GitHub Action that builds and signs images; a deploy does not need it |
 
 Clone the repositories into one directory, with these names. `site.yml` finds
-each service role at `../home-server-<repo>/ansible-role`. `deploy.sh` finds
-the playbook at `../home-server-core` and the credentials at
-`../home-server-secrets`. `SECRETS_DIR` overrides the second path.
+each service role at `../home-server-<repo>/ansible-role`, and `deploy.sh`
+finds the credentials at `../home-server-secrets`. `SECRETS_DIR` overrides that
+path.
 
 ```bash
-git clone https://github.com/MArpogaus/home-server-core.git       home-server-core
+git clone https://github.com/MArpogaus/home-server.git            home-server
 git clone https://github.com/MArpogaus/home-server-nextcloud.git  home-server-nextcloud
 git clone https://github.com/MArpogaus/home-server-bunker.git     home-server-bunker
 git clone https://github.com/MArpogaus/home-server-monitoring.git home-server-monitoring
 git clone https://github.com/MArpogaus/home-server-template.git   home-server-template
-git clone https://github.com/MArpogaus/home-server-deploy.git     home-server-deploy
 git clone <the private secrets repo>                              home-server-secrets
 ```
 
+## Architecture
+
+```
+site.yml
+  base_setup role                   Btrfs subvolumes, users, subuid,
+          │                         snapshots, off-box backup, zram, firewall,
+          │                         auto-update / auto-reboot timers
+          └── one service role per entry in base_setup_services
+                └── quadlet_service role   deploys quadlets/, quadlets/container.d/
+                                           and quadlets/configs/, reloads, restarts
+                                           the pod on change
+```
+
+One Linux user per service, each with its own systemd user manager and Podman
+network. Cross-service traffic goes through host-published ports, never
+container names.
+
+### What `base_setup` does
+
+| Area | How |
+|---|---|
+| Storage | Btrfs subvolume per service under `/var/services`, `snapshots` subvolume on the same disk: a rollback mechanism, not a backup |
+| Users | System users, linger, optional extra `groups`; the subuid/subgid range starts at `uid * base_setup_subuid_range_size + 100000`, so it is stable and collision-free |
+| Snapshots | `btrfs-snapshot@<svc>.timer`, on `base_setup_btrfs_snapshot_schedule`; read-only, retention by the date in the name |
+| Backup | `btrfs-backup@<target>.service`, started by a finished snapshot: incremental `btrfs send` to each target |
+| Memory | Swap on zram, sized `min(ram / 2, 4096)` |
+| Power | `sleep`, `suspend`, `hibernate` and `hybrid-sleep` targets masked: a server that suspends is down |
+| Updates | `podman-auto-update.timer` per user for the containers. A staged OS image is applied by a reboot right after the night's backup (`OnSuccess=` on each backup unit starts `auto-reboot-staged.service`), and `auto-reboot-staged.timer` repeats that check at 03:00 as the fallback. The platform stages the image with `rpm-ostreed-automatic.timer`. Stock Fedora CoreOS runs Zincati instead, which stages and reboots on its own schedule |
+| Firewall | firewalld: ssh, http and https are opened, permanent and immediate, with no `firewall-cmd --reload`, which would drop the SSH connection the deploy runs over. `ip_unprivileged_port_start=80`, so any service user can bind 80 and 443 while the proxy is down |
+| Metrics | `/var/lib/node-textfile`, see "Metrics" |
+
+## Requirements
+
+This project needs Ansible Core 2.21 or newer with the collections in
+`requirements.yml`. The host needs Fedora CoreOS 44 or newer. Ansible's Python
+needs `passlib` and `bcrypt` (ntfy hashes its users):
+`uv tool install --reinstall ansible --with passlib --with bcrypt`.
+
+`ansible.cfg` sets `force_handlers`. A handler then still runs when a later
+task fails. Without it, the next run finds the files unchanged, notifies
+nothing, and the systemd reload never happens.
+
 ## Development
 
-`CONTRIBUTING.md` in each `home-server-*` repository with code has the workflow:
+`CONTRIBUTING.md` in each repository with code has the workflow:
 branches, commits, hooks and action pinning.
 
 Dependabot cannot read a container image tag out of an Ansible variable, so
 Renovate does that. Each repository with a service role carries
 `.github/renovate.json`, which extends
-`home-server-core/.github/renovate-image-tags.json`. That preset reads each
+`.github/renovate-image-tags.json`. That preset reads each
 `*_image` default and opens one pull request per version tag against `dev`. It
 skips this project's own images, because the build workflow owns their major
 version.
@@ -55,31 +103,29 @@ Three references move by hand:
 - the SecureBlue signing key, `secureblue-2025.pub` in `platform/secureblue.bu`.
   The rebase follows the image's `latest` tag, so the image itself does not
   move by hand.
-- the Fedora CoreOS release in `home-server-core/test/start_vm.py`
+- the Fedora CoreOS release in `test/start_vm.py`
 - the Nextcloud majors: `versions` in `home-server-nextcloud`'s
   `.github/workflows/build.yml` and the role default
   `nextcloud_service_app_image`
 
 ## Deploy
 
-The controller needs what `home-server-core/README.md`, "Usage", lists
-(Ansible Core, the collections, `passlib` and `bcrypt`) and, for the test VM,
-what `home-server-core/test/README.md`, "Requirements", lists. The commands run
-from `home-server-deploy/`:
+The controller needs what "Requirements" lists and, for the test VM, what
+`test/README.md`, "Requirements", lists. The commands run from this
+repository:
 
 ```bash
-cd home-server-deploy
-cp ../home-server-secrets/ssh/coreos_key{,.pub} ../home-server-core/test/
+cp ../home-server-secrets/ssh/coreos_key{,.pub} test/
 # Terminal 1: the VM, on its serial console
-python3 ../home-server-core/test/start_vm.py --fresh --platform platform/secureblue.bu
+python3 test/start_vm.py --fresh --platform platform/secureblue.bu
 # Terminal 2, once the VM has rebased and rebooted
-ssh -p 2222 -i ../home-server-core/test/coreos_key -o IdentitiesOnly=yes \
+ssh -p 2222 -i test/coreos_key -o IdentitiesOnly=yes \
   core@127.0.0.1 systemctl is-active install-secureblue.service   # inactive
 ./deploy.sh
 ./functional_test.sh
 ```
 
-The VM boots with the key in `home-server-core/test/`, and the scripts log in
+The VM boots with the key in `test/`, and the scripts log in
 with `ssh/coreos_key` of the secrets repository, so the two hold the same pair.
 `start_vm.py` publishes the VM's ports on `127.0.0.1`. A controller in a
 container reaches the host through another address: start the VM with
@@ -87,7 +133,7 @@ container reaches the host through another address: start the VM with
 `TEST_VM=1 TARGET_HOST=<that address>`.
 
 A new deployment creates its secrets repository from this repository's
-templates. `start_vm.py` creates a key pair in `home-server-core/test/` when
+templates. `start_vm.py` creates a key pair in `test/` when
 none is there, and that pair goes to the secrets repository:
 
 ```bash
@@ -96,7 +142,7 @@ cp secrets.example/vars.yml.example ../home-server-secrets/secrets/vars.yml
 cp secrets.example/vars.host.yml.example ../home-server-secrets/secrets/vars.test.yml
 # Fill in the values, then encrypt both files.
 ansible-vault encrypt ../home-server-secrets/secrets/vars.yml ../home-server-secrets/secrets/vars.test.yml
-cp ../home-server-core/test/coreos_key{,.pub} ../home-server-secrets/ssh/
+cp test/coreos_key{,.pub} ../home-server-secrets/ssh/
 ```
 
 `home-server-secrets/README.md`, "Vault", has the password file that
@@ -128,7 +174,7 @@ trust, and compare the fingerprint with the console:
 Ansible's Python has `passlib` and `bcrypt`, which the ntfy user hash needs
 (`uv tool install --reinstall ansible --with passlib --with bcrypt`). It
 installs the collections and removes group and other access from
-`home-server-secrets`. It runs the playbook from `home-server-core/`, where
+`home-server-secrets`. It runs the playbook from this repository, where
 `ansible.cfg` is, and passes the host key and identity options through
 `ANSIBLE_SSH_COMMON_ARGS`. The secrets go in as extra-vars, which have the
 highest precedence, so no inventory can shadow one. If the ntfy site is
@@ -183,6 +229,17 @@ openssl rand -base64 48 | tr -d '/+=' | cut -c1-48
 The Nextcloud passwords are an exception to this rule. Each dump names the
 database role, and a person types the admin password on a phone.
 
+### Platform variables
+
+`roles/base_setup/defaults/main.yml` holds every platform variable and its
+default. The ones whose default is not the whole story:
+
+| Var | Note |
+|---|---|
+| `base_setup_backup_targets` | `[]` means no off-box backup. A target that leaves the list loses its config file and its backup metric on the next deploy |
+| `base_setup_iscsi_portal` | Set: the deploy logs in to the iSCSI target, with or without a backup target |
+| `base_setup_luks_passphrase` | Required as soon as a backup target is set; keep a copy off the box |
+
 ### The VM and the real host
 
 `vars.yml` holds what both hosts share, including the public hostnames.
@@ -191,6 +248,121 @@ database role, and a person types the admin password on a phone.
 A restore of a copy from another host is the risk. The dump creates the roles
 that it names again. Thus the database credentials here must agree with the
 source host.
+
+## Adding a service
+
+1. Copy `home-server-template` to `home-server-<name>`. Replace `__NAME__` with
+   the service name and `__PORT__` with a free loopback port (table below).
+2. Add the service to `base_setup_services` in
+   `inventory/group_vars/homeserver.yml`:
+
+   ```yaml
+   base_setup_services:
+     - name: immich
+       uid: 1003
+   ```
+
+   `repo` names the repository `home-server-<repo>` and defaults to `name`. A
+   service's `uid` never changes after its first deploy. It sets the subuid
+   range, and every image layer and data file of the service is owned inside
+   that range.
+3. For a public service, add its site to `bunker_service_sites` in the same
+   file, its hostname to the vault vars, and a DNS record for that name.
+4. Add its public URL to `monitoring_service_probe_urls`.
+5. Give each container a `Memory=` ceiling, and lower another service's ceiling
+   first when the sum outgrows the host (`docs/DESIGN.md`, "Memory ceilings are
+   ceilings, not reservations").
+6. Put the service's alert rules, dashboards and log filters in its
+   `monitoring/` folder (`home-server-monitoring/README.md`, "Monitoring files
+   of a repository"). Its credentials go into the vault vars.
+7. Deploy.
+
+| Port | Used by |
+|---|---|
+| `80`, `443` | the proxy, on every interface |
+| `127.0.0.1:8080` | Nextcloud |
+| `127.0.0.1:8081` | ntfy |
+| `127.0.0.2:3000` | Grafana |
+| `127.0.0.2:9090` | Prometheus |
+
+An image that this project's cosign key does not sign needs nothing further.
+`base_setup` reads every `*_image` default of every service role, and every
+`<repo>_service_*_image` variable the deployment sets for this host, and writes
+each repository into the signature policy. The policy keeps the image's own
+entries and sets the default to `reject`, so a repository that no role declares
+does not pull, whatever default the OS image ships.
+
+Each service gets a subvolume, user, subuid range, linger, snapshot timer and
+auto-update timer. This repository's own `monitoring/` covers snapshots,
+backups, reboots, SSH and SELinux.
+
+## Host-specific tasks
+
+A step that one host needs and no other host needs does not belong in these
+roles. The deployment names a task file, and `site.yml` includes it before
+`base_setup`, so a later task can depend on it (a device, a policy exception):
+
+```yaml
+host_tasks_pre: "{{ secrets_dir }}/tasks/<host>-pre.yml"
+```
+
+It is optional. `deploy.sh` sets `secrets_dir`.
+
+Use this for the genuinely singular. A mechanism that two hosts can share
+belongs in the role, with its value in the deployment. A platform step is the
+exception. These roles target stock Fedora CoreOS, so a step that only a
+derivative image needs lives in the deployment too, even when every host runs
+one: SecureBlue's tasks are `platform/secureblue.yml`. The
+same holds for the Ignition config: `ignition/build.sh` merges the Butane
+fragment that `--platform` names, such as
+`platform/secureblue.bu`, into the config.
+
+## Privilege escalation
+
+Ansible becomes root and the service users with `run0`, through
+`community.general.run0`. The plugin needs a terminal, and Ansible sees one only
+in its own SSH arguments: `ssh_extra_args` in `ansible.cfg` carries
+`-o RequestTTY=force`, which reaches `ssh` alone: `sftp` with a terminal hangs.
+With a terminal each `run0` session closes when the call ends. A session that
+stays in `closing` counts against logind's session limit, and a few hundred of
+them stop logind from opening new ones; `functional_test.sh` checks for them.
+Pipelining is off, because it cannot work with a terminal. `become_exe` sets
+`TERM=dumb`, so `run0` writes no terminal escape codes into the module output.
+
+The polkit rule `/etc/polkit-1/rules.d/60-run0-fast-user-auth.rules`, installed
+by Ignition, grants `org.freedesktop.systemd1.manage-units` to `core` without
+authentication. `manage-units` starts transient units, so `core` has
+unauthenticated root on this host. The SSH key is the whole perimeter.
+
+## Metrics
+
+`/var/lib/node-textfile` holds Prometheus text files that root writes when a
+job succeeds. node-exporter's textfile collector reads them. The directory is
+`container_ro_file_t`, so a rootless container mounts it read-only without a
+relabel. A service role may add its own files there.
+
+| File | Metric | Written by |
+|---|---|---|
+| `snapshot-<service>.prom` | `snapshot_last_success_timestamp_seconds{service}` | `btrfs-snapshot@<service>` |
+| `backup-<target>.prom` | `backup_last_success_timestamp_seconds{target}`, `backup_target_size_bytes`, `backup_target_avail_bytes` | `btrfs-backup@<target>` |
+
+The first deploy writes each file with the deploy time, so a job that never
+succeeds reads as stale 30 hours later.
+
+## Alerts
+
+`monitoring/` holds the rules for what this repository sets up.
+`home-server-monitoring` collects them and routes them by severity.
+
+| Alert | Severity | Fires when |
+|---|---|---|
+| `JobStale` | critical | A `*_last_success_timestamp_seconds` metric is older than 30 hours |
+| `BackupTargetLow` | warning | A backup target has less than 10 % free space |
+| `ScheduledJobFailed` | warning | A `btrfs-backup@` or `btrfs-snapshot@` unit failed in the last 6 hours |
+| `AutoRebootBlocked` | warning | `auto-reboot-staged` was refused more than once in 50 hours |
+| `SshLogin` | info | An SSH login with a key succeeded |
+| `SshLoginFailed` | warning | More than 5 failed SSH logins in 15 minutes |
+| `SelinuxDenials` | warning | More than 20 enforced SELinux denials in 15 minutes, pasta's start-up probes excluded |
 
 ## Backup targets
 
@@ -279,11 +451,11 @@ Replace `nextcloud` with `proxy` or `monitoring`. A root command is
 
 ### Installing the real host
 
-`home-server-core/ignition/` holds one Butane template for the test VM and the
+`ignition/` holds one Butane template for the test VM and the
 real hardware. It sets up the Btrfs root, the SSH key, the cosign public key,
 the polkit rule that lets `run0` escalate without a password, and a first-boot
 unit that layers python3 when the image has none.
-`--platform ../../home-server-deploy/platform/secureblue.bu` adds the unit that
+`--platform ../platform/secureblue.bu` adds the unit that
 rebases to SecureBlue, removes itself and reboots.
 
 1. Point DNS at the public address of the machine. Forward ports 80 and 443
@@ -297,10 +469,10 @@ rebases to SecureBlue, removes itself and reboots.
 3. Plug in the YubiKey, then build:
 
    ```bash
-   cd home-server-core/ignition
+   cd ignition
    podman run --rm -v "$PWD":/data:z -w /data \
      quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
-   P=../../home-server-deploy/platform/secureblue.bu
+   P=../platform/secureblue.bu
    ./build.sh --platform $P ign         # render config.ign only; read it
    ./build.sh --platform $P iso fedora-coreos-<version>-live.x86_64.iso /dev/sda
    ```
@@ -489,8 +661,7 @@ waiting.
 
 ## Test VM
 
-`home-server-core/test/README.md` has the commands. Deploy the playbook against
-the VM from `home-server-deploy/`. Test each change on the VM before it goes to
+`test/README.md` has the commands. Test each change on the VM before it goes to
 the real host. The two hosts run the same code. They differ only in
 `secrets/vars.<name>.yml`.
 
@@ -502,6 +673,11 @@ the real host. The two hosts run the same code. They differ only in
 | ntfy | `https://<bunker_service_ntfy_server_name>`, user `ntfy` + `monitoring_service_ntfy_password`, topic `alerts` |
 | Grafana | `ssh -L 3000:127.0.0.2:3000 core@host`, then http://localhost:3000, `admin` + `monitoring_service_grafana_admin_password` |
 | Nextcloud direct (BunkerWeb upstream) | `127.0.0.1:8080` on the host, loopback only |
+
+## Design
+
+`docs/DESIGN.md` says why the roles are shaped as they are, and
+`docs/HARDENING.md` what the hardening covers and where its gaps are.
 
 ## License
 
