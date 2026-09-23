@@ -5,13 +5,11 @@
 base_setup_services:
   - name: nextcloud
     uid: 82
-    repo: nextcloud
   - name: proxy
     uid: 1001
     repo: bunker
   - name: monitoring
     uid: 1002
-    repo: monitoring
     # Alloy reads the host journal.
     groups: [systemd-journal]
 
