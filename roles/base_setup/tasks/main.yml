@@ -253,7 +253,7 @@
   ansible.builtin.assert:
     that: base_setup_luks_passphrase | length > 0
     fail_msg: >-
-      base_setup_luks_passphrase is empty. Set it in secrets/vars.yml and keep
+      base_setup_luks_passphrase is empty. Set it in secrets/vars.<name>.yml and keep
       a copy off this machine: without it the backup cannot be read.
   when: base_setup_backup_targets | length > 0 or base_setup_iscsi_portal | length > 0
 
