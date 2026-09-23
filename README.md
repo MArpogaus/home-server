@@ -114,9 +114,8 @@ repository.
 
 ### A new deployment
 
-The Vault password comes first, because the secrets are encrypted with it. Keep
-a copy in a password manager: the secrets, the LUKS passphrase among them, are
-unreadable without it.
+The Vault password comes first, because the secrets are encrypted with it.
+`docs/HARDENING.md` says why a copy of it belongs in a password manager.
 
 ```bash
 mkdir -p -m 700 ~/.config/home-server
