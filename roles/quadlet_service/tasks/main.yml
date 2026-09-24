@@ -121,14 +121,27 @@
             group: "{{ service_name }}"
           register: quadlet_service_unpack
 
-        # Last, so a failed unpack repeats on the next deploy.
-        - name: Keep the archive as the record of what is unpacked
-          ansible.builtin.copy:
-            src: "{{ quadlet_service_stage.path }}.tgz"
-            dest: "{{ quadlet_service_dir }}.tgz"
-            owner: "{{ service_name }}"
-            group: "{{ service_name }}"
-            mode: "0600"
+    - name: Start the pod, or restart it when its files changed
+      ansible.builtin.systemd_service:
+        name: "{{ quadlet_service_pod }}-pod.service"
+        scope: user
+        daemon_reload: "{{ quadlet_service_changed }}"
+        state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_changed else 'started' }}"
+      become: true
+      become_user: "{{ service_name }}"
+      vars:
+        quadlet_service_changed: "{{ quadlet_service_unpack is changed }}"
+
+    # After the restart, so a failed unpack or restart repeats on the next
+    # deploy.
+    - name: Keep the archive as the record of what is unpacked
+      ansible.builtin.copy:
+        src: "{{ quadlet_service_stage.path }}.tgz"
+        dest: "{{ quadlet_service_dir }}.tgz"
+        owner: "{{ service_name }}"
+        group: "{{ service_name }}"
+        mode: "0600"
+      when: quadlet_service_files_changed
   always:
     - name: Remove the stage
       ansible.builtin.file:
@@ -140,14 +153,3 @@
       delegate_to: localhost
       become: false
       changed_when: false
-
-- name: Start the pod, or restart it when its files changed
-  ansible.builtin.systemd_service:
-    name: "{{ quadlet_service_pod }}-pod.service"
-    scope: user
-    daemon_reload: "{{ quadlet_service_changed }}"
-    state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_changed else 'started' }}"
-  become: true
-  become_user: "{{ service_name }}"
-  vars:
-    quadlet_service_changed: "{{ quadlet_service_unpack is changed }}"
