@@ -470,7 +470,7 @@ succeeds reads as stale 30 hours later.
 
 | Alert | Severity | Fires when |
 |---|---|---|
-| `JobStale` | critical | A `*_last_success_timestamp_seconds` metric is older than 30 hours |
+| `JobStale` | critical | A `*_last_success_timestamp_seconds` textfile metric is older than 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
 | `ScheduledJobFailed` | warning | A `btrfs-backup@` or `btrfs-snapshot@` unit failed in the last 6 hours |
 | `AutoRebootBlocked` | warning | `auto-reboot-staged` was refused more than once in 50 hours |

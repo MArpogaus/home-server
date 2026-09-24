@@ -4,7 +4,7 @@ groups:
     rules:
       - alert: JobStale
         expr: >-
-          label_replace({__name__=~".+_last_success_timestamp_seconds"}, "metric", "$1", "__name__", "(.+)")
+          label_replace({__name__=~".+_last_success_timestamp_seconds", job="node"}, "metric", "$1", "__name__", "(.+)")
           < time() - 30 * 3600
         labels:
           severity: critical
