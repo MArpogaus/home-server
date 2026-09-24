@@ -1,0 +1,16 @@
+---
+# The swap unit pulls in systemd-zram-setup@, which alone activates nothing.
+- name: Start zram swap
+  ansible.builtin.systemd_service:
+    name: dev-zram0.swap
+    state: started
+    daemon_reload: true
+
+- name: Restart iscsid
+  ansible.builtin.systemd_service:
+    name: iscsid.service
+    state: restarted
+
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true

@@ -1,0 +1,30 @@
+---
+- name: Set the iSCSI initiator name
+  ansible.builtin.copy:
+    content: "InitiatorName={{ base_setup_iscsi_initiator }}\n"
+    dest: /etc/iscsi/initiatorname.iscsi
+    owner: root
+    mode: "0600"
+  notify: Restart iscsid
+
+- name: Start iscsid
+  ansible.builtin.systemd_service:
+    name: iscsid.service
+    enabled: true
+    state: started
+
+- name: Apply the initiator name now
+  ansible.builtin.meta: flush_handlers
+
+- name: Discover the target, log in, and log in again at boot
+  community.general.open_iscsi:
+    portal: "{{ base_setup_iscsi_portal }}"
+    target: "{{ base_setup_iscsi_target }}"
+    discover: true
+    login: true
+    auto_node_startup: true
+
+- name: Wait for the LUN to appear
+  ansible.builtin.wait_for:
+    path: "{{ base_setup_iscsi_device }}"
+    timeout: 60

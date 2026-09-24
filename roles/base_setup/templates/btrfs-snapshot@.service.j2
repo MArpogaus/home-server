@@ -1,0 +1,12 @@
+[Unit]
+Description=Btrfs read-only snapshot of @%i
+OnSuccess={{ base_setup_backup_targets | map(attribute='name') | map('regex_replace', '^(.+)$', 'btrfs-backup@\\1.service') | join(' ') }}
+
+[Service]
+Type=oneshot
+TimeoutStartSec=2h
+Environment=BTRFS_SNAPSHOT_DIR={{ base_setup_btrfs_snapshot_dir }}
+Environment=BTRFS_SNAPSHOT_RETENTION_DAYS={{ base_setup_btrfs_snapshot_retention_days }}
+Environment=BTRFS_SERVICES_DIR={{ base_setup_services_dir }}
+Environment=NODE_TEXTFILE_DIR={{ base_setup_textfile_dir }}
+ExecStart=/usr/local/bin/btrfs-snapshot.sh %i

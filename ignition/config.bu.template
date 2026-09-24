@@ -1,0 +1,70 @@
+variant: fcos
+version: 1.7.0
+passwd:
+  users:
+    - name: core
+      groups:
+        - wheel
+      password_hash: "${PASSWORD_HASH}"
+      ssh_authorized_keys:
+        - "${SSH_PUBLIC_KEY}"
+storage:
+  filesystems:
+    - device: /dev/disk/by-partlabel/root
+      wipe_filesystem: true
+      format: btrfs
+      label: root
+  files:
+    - path: /etc/pki/containers/marpogaus-cosign.pub
+      mode: 0644
+      contents:
+        inline: |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE54diWpeKbUOvhecp64Oe5XOB9VHX
+          bCvOPDIIzZz0XNJsln4vVsWiHUMU+GIM20/4ohFk0rNx35l41G8+4vdhAQ==
+          -----END PUBLIC KEY-----
+    - path: /etc/containers/registries.d/ghcr.io-marpogaus.yaml
+      mode: 0644
+      contents:
+        inline: |
+          docker:
+            ghcr.io/marpogaus:
+              use-sigstore-attachments: true
+    - path: /etc/ssh/sshd_config.d/10-no-passwords.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Keys only. The console password exists for local recovery; it must
+          # not be usable over the network.
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PermitRootLogin no
+    - path: /etc/polkit-1/rules.d/60-run0-fast-user-auth.rules
+      mode: 0644
+      contents:
+        inline: |
+          polkit.addRule(function(action, subject) {
+            if (action.id === "org.freedesktop.systemd1.manage-units" &&
+                subject.user === "core" &&
+                subject.isInGroup("wheel")) {
+              return polkit.Result.YES;
+            }
+          });
+systemd:
+  units:
+    - name: install-python.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Layer python3 and its SELinux bindings for Ansible
+        ConditionPathExists=!/usr/bin/python3
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        TimeoutStartSec=15min
+        ExecStart=/usr/bin/rpm-ostree install --apply-live --idempotent --allow-inactive python3 python3-libselinux python3-policycoreutils
+
+        [Install]
+        WantedBy=multi-user.target

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Container image tags in the defaults of an Ansible service role, and the digest-pinned Ignition tools in ignition/build.sh. Dependabot covers the actions and the pre-commit hooks.",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitTypeAll(chore)"
+  ],
+  "baseBranches": [
+    "dev"
+  ],
+  "enabledManagers": [
+    "custom.regex"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)ansible-role/[^/]+/defaults/main\\.yml$/"
+      ],
+      "matchStrings": [
+        "_image:\\s*[\"']?(?<depName>[^\"'\\s:@]+):(?<currentValue>[^\"'\\s@]+)[\"']?"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|/)ignition/build\\.sh$/"
+      ],
+      "matchStrings": [
+        "(?<depName>quay\\.io/coreos/[a-z-]+):(?<currentValue>[^@\\s\"]+)@(?<currentDigest>sha256:[0-9a-f]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "This project builds and tags its own images, and the workflow matrix decides the major version.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/marpogaus/**"
+      ],
+      "enabled": false
+    }
+  ]
+}

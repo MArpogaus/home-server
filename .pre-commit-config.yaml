@@ -1,7 +1,7 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-executables-have-shebangs
@@ -15,14 +15,29 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
+    rev: a6564f5d57444e123433a5c9af733e3975c77229  # frozen: v0.11.0.1-1
     hooks:
       - id: shellcheck
 
+  # ansible-lint owns YAML style, so no YAML formatter runs beside it.
+  - repo: https://github.com/ansible/ansible-lint
+    rev: e7f397ad6dfa20d274afa17cd7bbedd84ed136f5  # frozen: v26.9.0
+    hooks:
+      - id: ansible-lint
+
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.18.1
+    rev: 054e4a278e11abb9b8df6c103fa64f544d468ee5  # frozen: v4.19.0
     hooks:
       - id: commitizen
         stages: [commit-msg]
       - id: commitizen-branch
         stages: [pre-push]
+
+  - repo: local
+    hooks:
+      - id: test-btrfs-backup
+        name: btrfs-backup.sh self-check
+        entry: test/test_btrfs_backup.sh
+        language: script
+        files: (btrfs-backup\.sh|test_btrfs_backup\.sh)$
+        pass_filenames: false

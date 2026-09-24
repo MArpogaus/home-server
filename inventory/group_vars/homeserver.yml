@@ -1,0 +1,51 @@
+---
+# What this deployment runs. base_setup configures a host; this says what the
+# host is for, so the role carries no service names of its own.
+# A uid never changes: README.md, "Adding a service".
+base_setup_services:
+  - name: nextcloud
+    uid: 82
+  - name: bunker
+    uid: 1001
+  - name: monitoring
+    uid: 1002
+    # Alloy reads the host journal.
+    groups: [systemd-journal]
+
+# The public hostnames are in the secrets; ntfy is optional.
+nextcloud_service_trusted_domains: "{{ nextcloud_hostname }}"
+monitoring_service_ntfy_base_url: >-
+  {{ ('https://' ~ ntfy_hostname) if ntfy_hostname | default('') | length > 0 else 'http://127.0.0.1:8081' }}
+
+# The sites the proxy fronts. home-server-bunker/README.md, "Sites", explains
+# each setting.
+bunker_service_sites: >-
+  {{ [nextcloud_site] + ([ntfy_site] if ntfy_hostname | default('') | length > 0 else []) }}
+
+nextcloud_site:
+  name: "{{ nextcloud_hostname }}"
+  upstream: "http://{{ bunker_service_host_loopback_address }}:8080"
+  options:
+    REVERSE_PROXY_WS: "yes"
+    MAX_CLIENT_SIZE: "15G"
+    REFERRER_POLICY: "no-referrer"
+    ALLOWED_METHODS: "GET|POST|HEAD|COPY|DELETE|LOCK|MKCOL|MOVE|PROPFIND|PROPPATCH|PUT|UNLOCK|OPTIONS|REPORT|SEARCH"
+    BAD_BEHAVIOR_STATUS_CODES: "400 401 403 405 444"
+    BAD_BEHAVIOR_THRESHOLD: "25"
+    MODSECURITY_CRS_PLUGINS: "nextcloud-rule-exclusions"
+  limit_req_urls:
+    - {url: /apps, rate: 5r/s}
+    - {url: /apps/text/session/sync, rate: 8r/s}
+    - {url: /core/preview, rate: 5r/s}
+    - {url: /remote.php/, rate: 8r/s}
+    - {url: /push/ws, rate: 8r/s}
+    - {url: /apps/memories/api/, rate: 8r/s}
+
+ntfy_site:
+  name: "{{ ntfy_hostname }}"
+  upstream: "http://{{ bunker_service_host_loopback_address }}:8081"
+  options:
+    REVERSE_PROXY_WS: "yes"
+    ALLOWED_METHODS: "GET|POST|HEAD|PUT|OPTIONS"
+    USE_MODSECURITY: "no"
+    BAD_BEHAVIOR_STATUS_CODES: "400 403 405 444"

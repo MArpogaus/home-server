@@ -1,0 +1,76 @@
+variant: fcos
+version: 1.7.0
+storage:
+  files:
+    - path: /etc/pki/containers/secureblue-2025.pub
+      mode: 0644
+      contents:
+        inline: |
+          -----BEGIN PUBLIC KEY-----
+          MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdruKsOhUkgdd0lNDHNBymE2Wyb/p
+          GVnx59QbNoGFbImqZLRVt6uQnO9MfiHU9IZiJl9aNetfAqDsgsltAUQnXQ==
+          -----END PUBLIC KEY-----
+    # Gates the signed rebase. base_setup rewrites the file on the first deploy.
+    - path: /etc/containers/policy.json
+      mode: 0644
+      overwrite: true
+      contents:
+        inline: |
+          {
+            "default": [{"type": "reject"}],
+            "transports": {
+              "docker": {
+                "ghcr.io/secureblue": [
+                  {
+                    "type": "sigstoreSigned",
+                    "keyPath": "/etc/pki/containers/secureblue-2025.pub",
+                    "signedIdentity": {"type": "matchRepository"}
+                  }
+                ]
+              }
+            }
+          }
+    - path: /opt/install_secureblue.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/usr/bin/env bash
+          set -e
+
+          # /opt survives the rebase, so the script removes itself.
+          systemctl disable --now zincati.service 2>/dev/null || true
+          systemctl stop rpm-ostreed-automatic.timer rpm-ostreed-automatic.service 2>/dev/null || true
+
+          echo 'Rebasing to securecore (SecureBlue CoreOS image)...'
+          rpm-ostree rebase ostree-image-signed:docker://ghcr.io/secureblue/securecore-main-hardened:latest
+
+          rm -f /opt/install_secureblue.sh
+
+          echo 'Rebooting...'
+          sleep 5
+          systemctl reboot
+systemd:
+  units:
+    # securecore ships python3, and a second rpm-ostree transaction would
+    # collide with the rebase.
+    - name: install-python.service
+      enabled: false
+    - name: install-secureblue.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Rebase to SecureBlue
+        ConditionPathExists=/opt/install_secureblue.sh
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=oneshot
+        TimeoutStartSec=1h
+        # The transaction runs in rpm-ostreed and outlives a killed client.
+        ExecStopPost=-/usr/bin/rpm-ostree cancel
+        WorkingDirectory=/var/tmp
+        ExecStart=/opt/install_secureblue.sh
+
+        [Install]
+        WantedBy=multi-user.target

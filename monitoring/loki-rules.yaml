@@ -1,0 +1,76 @@
+groups:
+  - name: home-server-jobs
+    interval: 1m
+    rules:
+      - alert: ScheduledJobFailed
+        expr: |
+          sum by (unit) (
+            count_over_time(
+              {job="systemd-journal", syslog_identifier="systemd", emitter_uid="0", unit=~"btrfs-(backup|snapshot)@.*\\.service"}
+                |~ "(?i)failed with result|dependency failed for" [6h]
+            )
+          ) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.unit }} failed"
+          description: "Check `journalctl -u {{ $labels.unit }}`. The data it protects has no fresh copy."
+
+  - name: home-server-reboot
+    interval: 15m
+    rules:
+      - alert: AutoRebootBlocked
+        expr: |
+          count_over_time(
+            {job="systemd-journal", syslog_identifier="systemd", emitter_uid="0", unit="auto-reboot-staged.service"}
+              |~ "(?i)failed with result" [50h]
+          ) > 1
+        labels:
+          severity: warning
+        annotations:
+          summary: "auto-reboot-staged was refused twice; the staged update is not applied"
+          description: "A job holds a shutdown inhibitor. Read `systemd-inhibit --list`."
+
+  - name: home-server-host
+    interval: 1m
+    rules:
+      - alert: SshLogin
+        expr: |
+          sum by (user, ip) (
+            count_over_time(
+              {job="systemd-journal", emitter_uid="0", unit="sshd.service"}
+                |= "Accepted publickey"
+                | pattern "Accepted publickey for <user> from <ip> port <_>" [2m]
+            )
+          ) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: "SSH login: {{ $labels.user }} from {{ $labels.ip }}"
+
+      # sshd logs a wrong key for an existing user as "Connection closed by
+      # authenticating user" at the default LogLevel.
+      - alert: SshLoginFailed
+        expr: |
+          sum(count_over_time({job="systemd-journal", emitter_uid="0", unit="sshd.service"}
+            |~ "Invalid user|Failed (publickey|password)|Connection closed by (authenticating|invalid) user|maximum authentication attempts|penalty: failed"
+            [15m])) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 5 failed SSH logins in 15 minutes"
+
+      - alert: SelinuxDenials
+        expr: |
+          sum(count_over_time({job="systemd-journal", syslog_identifier="audit", transport="audit"}
+                |= "avc:  denied" != "permissive=1"
+                !~ `\{ dac_(override|read_search) \} .* scontext=\S*:pasta_t:\S* .*tclass=cap_userns ` [15m])) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "More than 20 enforced SELinux denials in 15 minutes"
+          description: >-
+            `ausearch -m AVC -ts recent` on the host. pasta's capability probes at pod
+            start are excluded by its SELinux type, which a process cannot choose.

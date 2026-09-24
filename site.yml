@@ -1,0 +1,28 @@
+---
+- name: Base setup and services
+  hosts: all
+  gather_facts: true
+  pre_tasks:
+    - name: Locate each service repository in services/
+      ansible.builtin.set_fact:
+        base_setup_services: >-
+          {{ base_setup_services | map(attribute='name')
+             | map('regex_replace', '^', playbook_dir ~ '/services/')
+             | map('community.general.dict_kv', 'dir') | zip(base_setup_services) | map('combine') | list }}
+
+    - name: Run what this host needs before the base setup
+      ansible.builtin.include_tasks: "{{ host_tasks_pre }}"
+      when: host_tasks_pre is defined
+  roles:
+    - base_setup
+  post_tasks:
+    - name: Deploy each service role  # noqa: role-name[path]
+      ansible.builtin.include_role:
+        name: "{{ service_repo }}/ansible-role/{{ svc.name }}_service"
+      vars:
+        service_name: "{{ svc.name }}"
+        service_home: "{{ base_setup_services_dir }}/{{ svc.name }}"
+        service_repo: "{{ svc.dir }}"
+      loop: "{{ base_setup_services }}"
+      loop_control:
+        loop_var: svc

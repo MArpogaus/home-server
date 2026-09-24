@@ -1,0 +1,326 @@
+---
+
+- name: Ensure services root directory exists
+  ansible.builtin.file:
+    path: "{{ base_setup_services_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Create the Btrfs subvolumes
+  ansible.builtin.command:
+    cmd: btrfs subvolume create {{ item }}
+    creates: "{{ item }}"
+  loop: "{{ base_setup_services | map(attribute='name') | map('regex_replace', '^', base_setup_services_dir ~ '/') | list
+            + [base_setup_btrfs_snapshot_dir] }}"
+
+- name: Create service users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid }}"
+    home: "{{ base_setup_services_dir }}/{{ item.name }}"
+    shell: /usr/sbin/nologin
+    createhome: false
+    system: true
+    groups: "{{ item.groups | default([]) }}"
+    append: true
+  loop: "{{ base_setup_services }}"
+
+- name: Add subuid and subgid entries for rootless podman
+  ansible.builtin.lineinfile:
+    path: "{{ item.0 }}"
+    line: "{{ item.1.name }}:{{ item.1.uid | int * base_setup_subuid_range_size + 100000 }}:{{ base_setup_subuid_range_size }}"
+    regexp: "^{{ item.1.name }}:"
+    create: true
+    mode: "0644"
+  loop: "{{ ['/etc/subuid', '/etc/subgid'] | product(base_setup_services) | list }}"
+  loop_control:
+    label: "{{ item.0 }} {{ item.1.name }}"
+
+- name: Set subvolume ownership
+  ansible.builtin.file:
+    path: "{{ base_setup_services_dir }}/{{ item.name }}"
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    state: directory
+    mode: "0750"
+  loop: "{{ base_setup_services }}"
+
+- name: Read the image's container signature policy
+  ansible.builtin.slurp:
+    src: /usr/etc/containers/policy.json
+  register: base_setup_policy_default
+
+# The service roles run after this one, so their defaults are read from the
+# controller's checkout.
+- name: Collect the image repositories every service role declares
+  ansible.builtin.set_fact:
+    base_setup_image_repos: >-
+      {{ (base_setup_image_repos | default([]))
+         + ((lookup('ansible.builtin.file', base_setup_role_defaults) | from_yaml | default({}, true)
+             | dict2items | selectattr('key', 'search', '_image$')
+             | map(attribute='value') | select('string') | list)
+            + (hostvars[inventory_hostname] | dict2items
+               | selectattr('key', 'search', '^' ~ svc.name ~ '_service_.*_image$')
+               | map(attribute='value') | select('string') | list))
+           | map('regex_replace', '@[^@]*$', '') | map('regex_replace', ':[^:/]+$', '') | list }}
+  vars:
+    base_setup_role_defaults: >-
+      {{ svc.dir }}/ansible-role/{{ svc.name }}_service/defaults/main.yml
+  loop: "{{ base_setup_services }}"
+  loop_control:
+    loop_var: svc
+    label: "{{ svc.name }}"
+
+# A policy scope matches by prefix, so a registry or namespace alone would
+# accept every image below it.
+- name: Refuse an image reference that is not a repository
+  ansible.builtin.assert:
+    that: base_setup_bad_scopes | length == 0
+    fail_msg: >-
+      Not a repository: {{ base_setup_bad_scopes }}. Write registry/namespace/name.
+    quiet: true
+  vars:
+    base_setup_bad_scopes: >-
+      {{ base_setup_image_repos | default([])
+         | reject('match', '^[a-z0-9.-]+(:[0-9]+)?(/[a-z0-9._-]+){2,}$') | list }}
+
+- name: Keep the image's policy, reject by default, add this project's images
+  ansible.builtin.copy:
+    dest: /etc/containers/policy.json
+    owner: root
+    mode: "0644"
+    content: "{{ base_setup_policy_default.content | b64decode | from_json
+                 | combine({'default': [{'type': 'reject'}],
+                            'transports': {'docker': base_setup_policy_extra}}, recursive=True)
+                 | to_nice_json }}\n"
+  vars:
+    base_setup_unsigned_images: >-
+      {{ base_setup_image_repos | default([])
+         | reject('search', '^' ~ (base_setup_signed_registry | regex_escape) ~ '(/|$)')
+         | unique | sort | list }}
+    # Combined last, so no declared image can replace sigstoreSigned.
+    base_setup_policy_extra: >-
+      {{ dict(base_setup_unsigned_images
+              | zip_longest([], fillvalue=[{'type': 'insecureAcceptAnything'}]))
+         | combine({base_setup_signed_registry: [{'type': 'sigstoreSigned',
+                                                  'keyPath': '/etc/pki/containers/marpogaus-cosign.pub',
+                                                  'signedIdentity': {'type': 'matchRepository'}}]}) }}
+
+- name: Deploy the snapshot, backup and auto-reboot units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+    mode: "0644"
+  loop:
+    - btrfs-snapshot@.service
+    - btrfs-snapshot@.timer
+    - btrfs-backup@.service
+    - auto-reboot-staged.service
+    - auto-reboot-staged.timer
+  notify: Reload systemd
+
+- name: Deploy the snapshot and backup scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /usr/local/bin/{{ item }}
+    mode: "0755"
+  loop:
+    - btrfs-snapshot.sh
+    - btrfs-backup.sh
+
+- name: Load the new units
+  ansible.builtin.meta: flush_handlers
+
+# Readable by rootless containers without a relabel. README.md, "Metrics".
+- name: Label the textfile metrics directory for containers
+  community.general.sefcontext:
+    target: "{{ base_setup_textfile_dir }}(/.*)?"
+    setype: container_ro_file_t
+
+- name: Ensure the textfile metrics directory exists
+  ansible.builtin.file:
+    path: "{{ base_setup_textfile_dir }}"
+    state: directory
+    owner: root
+    mode: "0755"
+    setype: container_ro_file_t
+
+# A job that never succeeds then reads as stale 30 h after the first deploy.
+- name: Seed the snapshot metrics
+  ansible.builtin.copy:
+    dest: "{{ base_setup_textfile_dir }}/snapshot-{{ item.name }}.prom"
+    content: "snapshot_last_success_timestamp_seconds{service=\"{{ item.name }}\"} {{ ansible_facts.date_time.epoch }}\n"
+    force: false
+    owner: root
+    mode: "0644"
+    setype: container_ro_file_t
+  loop: "{{ base_setup_services }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Enable and start snapshot timers for each service
+  ansible.builtin.systemd_service:
+    name: btrfs-snapshot@{{ item.name }}.timer
+    enabled: true
+    state: started
+  loop: "{{ base_setup_services }}"
+
+- name: Enable linger for service users
+  ansible.builtin.command:
+    cmd: loginctl enable-linger {{ item.name }}
+    creates: "/var/lib/systemd/linger/{{ item.name }}"
+  loop: "{{ base_setup_services }}"
+
+# enable-linger starts the manager only on the run that creates the linger file.
+- name: Start the systemd user managers
+  ansible.builtin.systemd_service:
+    name: user@{{ item.uid }}.service
+    state: started
+    scope: system
+  loop: "{{ base_setup_services }}"
+
+- name: Enable and start auto-reboot timer
+  ansible.builtin.systemd_service:
+    name: auto-reboot-staged.timer
+    enabled: true
+    state: started
+
+- name: Enable podman auto-update timer for service users
+  ansible.builtin.systemd_service:
+    name: podman-auto-update.timer
+    scope: user
+    enabled: true
+    state: started
+  become: true
+  become_user: "{{ item.name }}"
+  loop: "{{ base_setup_services }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure firewalld is running
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Open the firewall services
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  loop: "{{ base_setup_firewall_services }}"
+
+- name: Let unprivileged users bind ports >= 80
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_unprivileged_port_start
+    value: "80"
+    sysctl_file: /etc/sysctl.d/90-unprivileged-port-start.conf
+
+- name: Mask every way to sleep
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop:
+    - sleep.target
+    - suspend.target
+    - hibernate.target
+    - hybrid-sleep.target
+
+- name: Enable swap on zram
+  ansible.builtin.copy:
+    dest: /etc/systemd/zram-generator.conf
+    mode: "0644"
+    content: |
+      [zram0]
+      zram-size = min(ram / 2, 4096)
+      compression-algorithm = zstd
+  notify: Start zram swap
+
+- name: Assert a LUKS passphrase is set
+  ansible.builtin.assert:
+    that: base_setup_luks_passphrase | length > 0
+    fail_msg: >-
+      base_setup_luks_passphrase is empty. Set it in secrets/vars.<name>.yml and keep
+      a copy off this machine: without it the backup cannot be read.
+  when: base_setup_backup_targets | length > 0 or base_setup_iscsi_portal | length > 0
+
+# On the passphrase alone too: a target is formatted by hand before it is listed.
+- name: Install the LUKS key file
+  when: base_setup_luks_passphrase | length > 0
+  block:
+    - name: Ensure the LUKS key directory exists
+      ansible.builtin.file:
+        path: "{{ base_setup_luks_keyfile | dirname }}"
+        state: directory
+        owner: root
+        mode: "0700"
+
+    - name: Write the LUKS key file
+      ansible.builtin.copy:
+        content: "{{ base_setup_luks_passphrase }}"
+        dest: "{{ base_setup_luks_keyfile }}"
+        owner: root
+        mode: "0400"
+      no_log: true
+
+- name: Set up the iSCSI backup target
+  ansible.builtin.include_tasks: backup_target.yml
+  when: base_setup_iscsi_portal | length > 0
+
+# node-exporter needs search here to stat each mounted target.
+- name: Ensure the backup root exists
+  ansible.builtin.file:
+    path: "{{ base_setup_backup_root }}"
+    state: directory
+    mode: "0711"
+
+- name: Seed the backup metrics
+  ansible.builtin.copy:
+    dest: "{{ base_setup_textfile_dir }}/backup-{{ item.name }}.prom"
+    content: "backup_last_success_timestamp_seconds{target=\"{{ item.name }}\"} {{ ansible_facts.date_time.epoch }}\n"
+    force: false
+    owner: root
+    mode: "0644"
+    setype: container_ro_file_t
+  loop: "{{ base_setup_backup_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Register each backup target in crypttab
+  ansible.builtin.lineinfile:
+    path: /etc/crypttab
+    regexp: "^backup-{{ item.name }}\\s"
+    line: >-
+      backup-{{ item.name }} UUID={{ item.uuid }}
+      {{ base_setup_luks_keyfile }} luks,_netdev,nofail
+    create: true
+    owner: root
+    mode: "0600"
+  loop: "{{ base_setup_backup_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload systemd
+
+- name: Mount each target on demand
+  ansible.posix.mount:
+    path: "{{ base_setup_backup_root }}/{{ item.name }}"
+    src: "/dev/mapper/backup-{{ item.name }}"
+    fstype: btrfs
+    opts: noauto,nofail,noatime,x-systemd.automount,x-systemd.idle-timeout=300
+    state: present
+  loop: "{{ base_setup_backup_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  notify: Reload systemd
+
+- name: Generate the automounts
+  ansible.builtin.meta: flush_handlers
+
+- name: Start the automounts
+  ansible.builtin.shell:  # noqa: command-instead-of-module  (the unit name needs systemd-escape)
+    cmd: systemctl start "$(systemd-escape -p --suffix=automount {{ (base_setup_backup_root ~ '/' ~ item.name) | quote }})"
+  loop: "{{ base_setup_backup_targets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false

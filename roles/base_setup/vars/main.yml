@@ -1,0 +1,6 @@
+---
+# The Ignition config installs the key for this registry, so both stay fixed.
+base_setup_signed_registry: ghcr.io/marpogaus
+
+# node-exporter in the monitoring pod mounts this path.
+base_setup_textfile_dir: /var/lib/node-textfile

@@ -1,0 +1,9 @@
+[submodule "services/nextcloud"]
+	path = services/nextcloud
+	url = https://github.com/MArpogaus/home-server-nextcloud.git
+[submodule "services/bunker"]
+	path = services/bunker
+	url = https://github.com/MArpogaus/home-server-bunker.git
+[submodule "services/monitoring"]
+	path = services/monitoring
+	url = https://github.com/MArpogaus/home-server-monitoring.git

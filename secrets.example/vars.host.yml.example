@@ -1,0 +1,38 @@
+---
+# Copy to secrets/vars.<TARGET_NAME>.yml in the secrets repository, where
+# <TARGET_NAME> is the name you pass to the scripts, such as test.
+# Values here win over vars.yml, which every host shares. Each host has its own
+# credentials, so a test VM never holds a production one. Encrypt the file.
+
+nextcloud_service_db_password: ""
+nextcloud_service_admin_password: ""
+# The phone logs in to ntfy as user ntfy with this password.
+monitoring_service_ntfy_password: ""
+# tk_ and 29 lowercase letters and digits. Alertmanager and deploy.sh use it.
+monitoring_service_ntfy_token: ""
+monitoring_service_grafana_admin_password: ""
+
+# A SecureBlue host needs the platform steps. A host with steps of its own names
+# its own file, which includes this one.
+host_tasks_pre: "{{ playbook_dir }}/platform/secureblue.yml"
+
+# A host without public DNS (the test VM) serves a self-signed certificate.
+# A real host deletes these two lines and gets one from Let's Encrypt.
+bunker_service_generate_self_signed_ssl: "yes"
+bunker_service_auto_lets_encrypt: "no"
+
+# The test VM follows the image the dev branch publishes. A real host deletes
+# this line and follows the role default.
+nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
+
+# Real hardware only: the public URLs to probe, which must resolve and answer
+# or PublicUrlDown fires. The test VM probes nothing.
+monitoring_service_probe_urls: []
+# monitoring_service_probe_urls:
+#   - https://cloud.example.com/status.php
+#   - https://ntfy.example.com/v1/health
+
+# Real hardware only: the backup target.
+# base_setup_iscsi_portal: ""
+# base_setup_iscsi_target: ""
+# base_setup_luks_passphrase: ""
