@@ -342,8 +342,8 @@ echo "tk_$(openssl rand -hex 15 | cut -c1-29)"
 
 ### base_setup variables
 
-`roles/base_setup/defaults/main.yml` holds every base_setup variable and its
-default. The ones whose default is not the whole story:
+`roles/base_setup/defaults/main.yml` holds every base_setup variable you can
+override, and its default. The ones whose default is not the whole story:
 
 | Var | Note |
 |---|---|
