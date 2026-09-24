@@ -1,8 +1,8 @@
 ---
 base_setup_subuid_range_size: 65536
 
-# Set by the deployment. Keys: name, uid, repo (the role is <repo>_service),
-# optional groups. README.md, "Adding a service".
+# Set by the deployment. Keys: name, uid, optional groups. README.md, "Adding a
+# service".
 base_setup_services: []
 
 base_setup_services_dir: /var/services
