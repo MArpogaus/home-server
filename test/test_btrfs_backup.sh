@@ -159,6 +159,11 @@ setup_field_gone_old_partial() {
 	place "$1/backup/t/svc/${DOLD}" nofield-plain
 }
 
+setup_stale_source() {
+	mkdir -p "$1/snap/svc/${DOLD}"
+	place "$1/backup/t/svc/${DOLD}" received
+}
+
 echo "=== btrfs-backup.sh ==="
 run_case "no snapshot at all fails the run"        1 0 setup_no_snapshots
 run_case "first sync sends one copy"               0 1 setup_first_sync
@@ -172,6 +177,7 @@ run_case "an unfinished receive does not stop the rest" 1 2 setup_unfinished_one
 run_case "a failed receive does not stop the rest"  1 2 setup_failed_one_of_two "" "did not finish"
 run_case "a named snapshot is not the latest"      0 1 setup_named_snapshot "${D3}"
 run_case "retention deletes an unreceivable leftover" 0 1 setup_field_gone_old_partial "${D3}"
+run_case "retention keeps the copy of the latest snapshot" 0 1 setup_stale_source "${DOLD}"
 
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 [[ "${FAIL}" -eq 0 ]]
