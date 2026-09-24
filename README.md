@@ -470,7 +470,7 @@ succeeds reads as stale 30 hours later.
 
 | Alert | Severity | Fires when |
 |---|---|---|
-| `JobStale` | critical | A `*_last_success_timestamp_seconds` metric is older than 30 hours |
+| `JobStale` | critical | A `*_last_success_timestamp_seconds` textfile metric is older than 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
 | `ScheduledJobFailed` | warning | A `btrfs-backup@` or `btrfs-snapshot@` unit failed in the last 6 hours |
 | `AutoRebootBlocked` | warning | `auto-reboot-staged` was refused more than once in 50 hours |
@@ -731,6 +731,13 @@ the real host. The two hosts run the same code. They differ only in
 
 `docs/DESIGN.md` says why the roles are shaped as they are, and
 `docs/HARDENING.md` what the hardening covers and where its gaps are.
+
+## LLM coding tools
+
+This project is developed with LLM-based coding tools. They write most of the
+code and documentation. The maintainer sets the goals and the design, reviews
+every change and is responsible for it. Changes are tested on a VM before they
+reach a host.
 
 ## License
 
