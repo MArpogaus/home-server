@@ -30,7 +30,7 @@ groups:
           severity: warning
         annotations:
           summary: "auto-reboot-staged was refused twice; the staged update is not applied"
-          description: "A job holds a shutdown inhibitor. Read `systemd-inhibit --list`."
+          description: "A job holds a shutdown inhibitor or a user is logged in. Read `systemd-inhibit --list` and `loginctl list-sessions`."
 
   - name: home-server-host
     interval: 1m
