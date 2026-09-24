@@ -100,6 +100,13 @@
     - name: Replace the Quadlet directory when the archive changed
       when: quadlet_service_files_changed
       block:
+        # A run that fails from here on leaves no record, so the next deploy
+        # replaces the directory again.
+        - name: Forget the archive last unpacked
+          ansible.builtin.file:
+            path: "{{ quadlet_service_dir }}.tgz"
+            state: absent
+
         - name: Remove the old Quadlet directory
           ansible.builtin.file:
             path: "{{ quadlet_service_dir }}"
@@ -132,8 +139,6 @@
       vars:
         quadlet_service_changed: "{{ quadlet_service_unpack is changed }}"
 
-    # After the restart, so a failed unpack or restart repeats on the next
-    # deploy.
     - name: Keep the archive as the record of what is unpacked
       ansible.builtin.copy:
         src: "{{ quadlet_service_stage.path }}.tgz"
