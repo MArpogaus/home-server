@@ -114,7 +114,7 @@ reference.
 | `base_setup_services` | yes | The services, in `inventory/group_vars/homeserver.yml` |
 | `nextcloud_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_hostname` | no | ntfy's public hostname; empty means no ntfy site |
-| `nextcloud_service_db_password`, `nextcloud_service_admin_password` | yes | Nextcloud credentials |
+| Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
 | `monitoring_service_ntfy_password` / `_token` | yes | The phone's ntfy login; the token that Alertmanager and `deploy.sh` use |
 | `monitoring_service_grafana_admin_password` | yes | Grafana `admin` |
 | `monitoring_service_probe_urls` | on a real host | Public URLs probed every minute |
@@ -176,9 +176,10 @@ A service publishes on a loopback port that no other service uses:
 - **Memory ceilings are ceilings, not reservations.** The `Memory=` keys add
   up to more than 8 GB. They stop one container taking the host down. Lower a
   ceiling before you add a service.
-- **Container output goes through `passthrough`.** conmon's journald driver
-  files every stderr line as `err`. With `LogDriver=passthrough` the unit's
-  priority applies.
+- **Container output goes through `passthrough` where it can.** conmon's
+  journald driver files every stderr line as `err`. With
+  `LogDriver=passthrough` the unit's priority applies. Each service sets it in
+  its own `container.d/`; bunker cannot and keeps journald.
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The reboot uses
   `--check-inhibitors=yes`, so it never interrupts a backup or a dump.
