@@ -168,14 +168,11 @@ A service publishes on a loopback port that no other service uses:
 - **One Btrfs subvolume and one rootless user per service.** A bad deploy
   rolls back one service alone, and a compromised service does not reach
   another's files. No quotas: qgroups cost too much on a thin client.
-- **One role deploys every service's Quadlets.** `quadlet_service` packs
-  `quadlets/`, its own `container.d/` drop-ins and the extra files into one
-  reproducible archive. When the archive differs from the one last unpacked on
-  the host, the role deletes the user's Quadlet directory, unpacks the archive,
-  reloads the user manager and restarts the pod. Otherwise it only starts the
-  pod if it is stopped. A file that leaves a repository, such as a rule or a
-  dashboard, therefore leaves the host at the next deploy. One archive replaces
-  one Ansible task per file, which costs seconds each on a thin client.
+- **One role deploys every service's Quadlets as one archive.** A changed
+  archive replaces the whole Quadlet directory, so a file that leaves a
+  repository leaves the host; `home-server-template/README.md`, "Role
+  contract", has the steps. One archive replaces one Ansible task per file,
+  which costs seconds each on a thin client.
 - **Memory ceilings are ceilings, not reservations.** The `Memory=` keys add
   up to more than 8 GB. They stop one container taking the host down. Lower a
   ceiling before you add a service.
