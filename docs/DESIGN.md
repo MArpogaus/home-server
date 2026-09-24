@@ -54,10 +54,9 @@ reboots when rpm-ostree has staged a deployment, right after the night's backup
 finished (`OnSuccess=` on the backup unit), or at 03:00 as the fallback. It
 never reboots while a sync or a dump runs:
 `systemctl reboot --check-inhibitors=yes` asks logind, and the backup and the
-dump hold a shutdown inhibitor. logind also refuses while a user is logged
-in. The reboot unit is ordered after every backup
-unit, so with several targets the first finished sync queues the reboot and the
-last one releases it. A refused reboot fails the unit, which happens when the
+dump hold a shutdown inhibitor. logind also refuses while a user is logged in.
+The reboot unit is ordered after every backup unit, so with several targets the
+first finished sync queues the reboot and the last one releases it. A refused reboot fails the unit, which happens when the
 03:00 fallback meets a running sync. `AutoRebootBlocked` reports it once it
 repeats. Every long oneshot job carries a `TimeoutStartSec=`, so a
 hung job fails and releases its inhibitor. Only the project's own GHCR images
