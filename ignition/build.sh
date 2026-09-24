@@ -99,8 +99,8 @@ install)
 	;;
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
-	podman run --pull=always --rm \
-		-v "${SCRIPT_DIR}":/data:z -v "${SRC_DIR}":/iso:z -w /data \
+	podman run --pull=always --rm --security-opt label=disable \
+		-v "${SCRIPT_DIR}":/data -v "${SRC_DIR}":/iso -w /data \
 		"${INSTALLER_IMAGE}" \
 		iso customize --force --dest-ignition config.ign \
 		--dest-device "${DEVICE}" \
