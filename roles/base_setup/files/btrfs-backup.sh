@@ -85,8 +85,11 @@ for src in "${SNAP_DIR}"/*/; do
 	fi
 	copied=$((copied + 1))
 
+	# The copy of the latest snapshot stays, however old: a service whose
+	# snapshots stopped would otherwise lose its last backup.
 	for snap in "${DEST}/${svc}"/????-??-??; do
 		[ -d "${snap}" ] || continue
+		[ "$(basename "${snap}")" = "${latest}" ] && continue
 		if [[ "$(basename "${snap}")" < "${CUTOFF}" ]]; then
 			btrfs subvolume delete "${snap}" || rm -rf "${snap}"
 			echo "Deleted backup: ${snap}"

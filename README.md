@@ -502,7 +502,8 @@ instance and the alert label. Each target gets a `crypttab` entry with
 `nofail`, which opens when the disk appears, and `/var/backup/<name>` as an
 automount, which unmounts after five idle minutes. Each target also gets
 `btrfs-backup@<name>.service`, which deletes that target's copies older than
-`base_setup_backup_retention_days`.
+`base_setup_backup_retention_days`. The copy of each service's latest snapshot
+stays.
 
 The sync has no timer. A finished snapshot starts the sync through
 `OnSuccess=`. Thus the copy is always the snapshot that the host made. systemd
