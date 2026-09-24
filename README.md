@@ -93,7 +93,7 @@ needs 80. Copy `secrets.example/vars.host.yml.example` to
 ```bash
 cd ignition
 INSTALLER=$(sed -n 's/^INSTALLER_IMAGE="\(.*\)"$/\1/p' build.sh)
-podman run --rm -v "$PWD":/data:z -w /data "$INSTALLER" download -s stable -p metal -f iso
+podman run --rm --security-opt label=disable -v "$PWD":/data -w /data "$INSTALLER" download -s stable -p metal -f iso
 ./build.sh --platform ../platform/secureblue.bu ign    # render config.ign; read it
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt

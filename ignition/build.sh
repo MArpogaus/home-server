@@ -42,7 +42,7 @@ iso)
 	[ -f "${SRC_ISO}" ] || {
 		echo "ERROR: no such file: ${SRC_ISO}"
 		echo "       Fetch the live ISO into this directory first:"
-		echo "       podman run --rm -v \"${SCRIPT_DIR}\":/data:z -w /data \\"
+		echo "       podman run --rm --security-opt label=disable -v \"${SCRIPT_DIR}\":/data -w /data \\"
 		echo "           ${INSTALLER_IMAGE} download -s stable -p metal -f iso"
 		exit 1
 	}
