@@ -85,6 +85,11 @@ container, start the VM with `--listen <address>` and run the scripts with
 
 ### Real host
 
+Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
+needs 80. Copy `secrets.example/vars.host.yml.example` to
+`../home-server-secrets/secrets/vars.<host>.yml`, drop its self-signed and
+`-dev` lines, fill it in and encrypt it with `ansible-vault encrypt`.
+
 ```bash
 cd ignition
 INSTALLER=$(sed -n 's/^INSTALLER_IMAGE="\(.*\)"$/\1/p' build.sh)
@@ -114,7 +119,7 @@ reference.
 | `monitoring_service_grafana_admin_password` | yes | Grafana `admin` |
 | `monitoring_service_probe_urls` | on a real host | Public URLs probed every minute |
 | `bunker_service_generate_self_signed_ssl`, `bunker_service_auto_lets_encrypt` | without public DNS | Self-signed certificate instead of Let's Encrypt |
-| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup |
+| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
@@ -130,7 +135,9 @@ Machine secrets are 48 alphanumerics, so no file format needs quotes:
 | `SECRETS_DIR` | `../home-server-secrets` | The secrets repository |
 | `SSH_KEY_FILE`, `SSH_AUTH_KEY` | `test/coreos_key`, `file` | The identity; `agent` uses the SSH agent |
 | `TEST_VM` | none | `1` marks another address as the test VM |
-| `SERVICES`, `SERVER_NAME`, `BACKUP_TARGET` | from the host | The functional test's users, hostname and a target for a real backup |
+| `SERVICES` | the host's `/etc/subuid` | The functional test's service users |
+| `SERVER_NAME` | `nextcloud_hostname` | The hostname the functional test calls |
+| `BACKUP_TARGET` | none | A target for a real backup in the functional test |
 
 ## Adding a service
 
@@ -141,6 +148,15 @@ Machine secrets are 48 alphanumerics, so no file format needs quotes:
    first deploy, because it sets the subuid range that owns the service's files.
 3. For a public service, add a `<name>_site` to `bunker_service_sites`, a DNS
    record and a probe URL. Then deploy.
+
+A service publishes on a loopback port that no other service uses:
+
+| Address | Service |
+|---|---|
+| `:80`, `:443` on every address | bunker |
+| `127.0.0.1:8080` | Nextcloud |
+| `127.0.0.1:8081` | ntfy |
+| `127.0.0.2:3000`, `127.0.0.2:9090` | Grafana, Prometheus |
 
 ## Design decisions
 
@@ -216,7 +232,7 @@ SELinux exceptions:
 
 | Alert | Severity | Fires when |
 |---|---|---|
-| `JobStale` | critical | A snapshot or backup has not succeeded for 30 hours |
+| `JobStale` | critical | A snapshot, backup or dump (a `*_last_success` textfile metric) has not succeeded for 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
 | `ScheduledJobFailed` | warning | A snapshot or backup unit failed in the last 6 hours |
 | `AutoRebootBlocked` | warning | The staged-update reboot was refused twice in 50 hours |
