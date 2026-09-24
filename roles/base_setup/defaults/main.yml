@@ -17,7 +17,7 @@ base_setup_firewall_services:
   - https
 
 # uuid (of the LUKS container) and name. Empty disables
-# backups. README.md, "Backup targets".
+# backups. README.md, "Architecture".
 base_setup_backup_targets: []
 base_setup_backup_root: /var/backup
 base_setup_backup_retention_days: 90

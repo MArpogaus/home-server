@@ -1,6 +1,6 @@
 ---
 # Copy to secrets/vars.yml in the secrets repository. Only values that differ
-# from the role defaults belong here; README.md, "Variables", lists them. Every
+# from the role defaults belong here; README.md, "Configuration", lists them. Every
 # host shares this file. Credentials and host-only values go to
 # vars.<TARGET_NAME>.yml.
 

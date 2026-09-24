@@ -1,6 +1,6 @@
 ---
 # One archive per service instead of one SSH round trip per file.
-# docs/DESIGN.md, "One role deploys every service's Quadlets".
+# README.md, "Design decisions".
 - name: Stage the Quadlets on the controller
   ansible.builtin.tempfile:
     state: directory

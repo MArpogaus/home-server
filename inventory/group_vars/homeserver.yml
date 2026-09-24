@@ -17,8 +17,8 @@ nextcloud_service_trusted_domains: "{{ nextcloud_hostname }}"
 monitoring_service_ntfy_base_url: >-
   {{ ('https://' ~ ntfy_hostname) if ntfy_hostname | default('') | length > 0 else 'http://127.0.0.1:8081' }}
 
-# The sites the proxy fronts. home-server-bunker/README.md, "Sites", explains
-# each setting.
+# The sites the proxy fronts. home-server-bunker/README.md, "Sites" and
+# "Specifics", explain the settings.
 bunker_service_sites: >-
   {{ [nextcloud_site] + ([ntfy_site] if ntfy_hostname | default('') | length > 0 else []) }}
 
