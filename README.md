@@ -12,7 +12,7 @@ names every service version it deploys.
 | `home-server-nextcloud` | `services/nextcloud` | Nextcloud pod, role and custom image |
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
 | `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts to ntfy |
-| `home-server-secrets` | `../home-server-secrets` | Credentials, SSH identities, host settings and tasks (**private**) |
+| `home-server-secrets` | `../home-server-secrets` | Credentials, SSH host keys, host settings and tasks (**private**) |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
 
