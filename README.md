@@ -216,9 +216,8 @@ Known gaps:
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 - No script restores a backup, and no `btrfs scrub` runs on a schedule.
-- ntfy, the one public container of the monitoring pod, shares the pod's
-  `127.0.0.1` with Loki and Alertmanager, which have no authentication. A
-  compromised ntfy can read Loki and silence every alert.
+- A compromised ntfy reaches Loki and Alertmanager
+  (`home-server-monitoring/README.md`, "Specifics").
 
 SELinux exceptions:
 
