@@ -12,6 +12,8 @@
 # --platform names a Butane fragment that the deployment provides, such as a
 # rebase to a derivative image. It is merged into the config.
 set -euo pipefail
+# config.bu and config.ign carry the console password hash.
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/config.bu.template"
