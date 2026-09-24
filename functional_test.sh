@@ -113,8 +113,9 @@ done
 echo "--- Auto-reboot Timer ---"
 # Anchored: enabled-runtime is gone after a reboot.
 check_output "Auto-reboot timer enabled" "systemctl is-enabled auto-reboot-staged.timer" "^enabled$"
-# A rollback disables this timer, and no role enables it.
-check_output "Update staging timer enabled" "systemctl is-enabled rpm-ostreed-automatic.timer" "^enabled$"
+# A rollback disables this timer, and no role enables it. Stock Fedora CoreOS
+# stages with Zincati instead.
+check_output "Update staging enabled" "systemctl is-enabled rpm-ostreed-automatic.timer zincati.service" "^enabled$"
 
 echo "--- Service Users ---"
 for svc in ${SERVICES}; do
