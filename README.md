@@ -115,9 +115,7 @@ reference.
 | `nextcloud_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
-| `monitoring_service_ntfy_password` / `_token` | yes | The phone's ntfy login; the token that Alertmanager and `deploy.sh` use |
-| `monitoring_service_grafana_admin_password` | yes | Grafana `admin` |
-| `monitoring_service_probe_urls` | on a real host | Public URLs probed every minute |
+| Monitoring credentials and probe URLs | yes | `home-server-monitoring/README.md`, "Configuration" |
 | `bunker_service_generate_self_signed_ssl`, `bunker_service_auto_lets_encrypt` | without public DNS | Self-signed certificate instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
