@@ -59,7 +59,7 @@
       become: false
       changed_when: false
 
-    # In the stage, so `unarchive` does not undo a chmod on every run.
+    # In the stage, so the mode is part of the archive and its checksum.
     - name: Restrict the config files that must not be world-readable
       ansible.builtin.file:
         path: "{{ quadlet_service_stage.path }}/configs/{{ item.key }}"
