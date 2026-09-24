@@ -52,7 +52,7 @@ short sentences, one meaning per word, and the condition before the command.
 
 - Hooks: the basics, shellcheck, ansible-lint and commitizen.
 - `.shellcheckrc` lets shellcheck follow `source lib.sh`.
-- Ansible variables are `<role>_*`.
+- Role variables are `<role>_*`.
 - `.github/renovate-image-tags.json` is the Renovate preset that the service
   repositories and this one extend. Here it bumps the digests of the
   `coreos-installer` and `butane` images that `ignition/build.sh` pins.
