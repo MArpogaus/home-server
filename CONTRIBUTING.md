@@ -26,6 +26,8 @@ and `git push --follow-tags`. The `release` workflow turns every pushed tag into
 a GitHub release. GitHub writes its notes: the pull requests merged since the
 previous release and a link that compares the two tags.
 
+Tags are `vX.Y`, and a fix release adds `.Z`, such as `v1.0` and `v1.0.1`.
+
 ## Services and their pins
 
 Each service repository is a submodule under `services/<name>`. Work on a
