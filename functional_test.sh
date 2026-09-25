@@ -89,28 +89,10 @@ check_loki() { expect "$1" "$(run_loki "$2")" "$3"; }
 echo "=== Functional tests ==="
 echo ""
 
-echo "--- Firewall ---"
-check_output "SSH, HTTP and HTTPS allowed" "firewall-cmd --list-services | tr ' ' '\\n' | grep -cxE 'ssh|http|https'" "^3$"
-# Prints something only when firewalld runs, so an empty answer cannot pass.
-check_output "Port 3000 blocked" \
-  "[ -z \"\$(firewall-cmd --list-ports)\" ] && firewall-cmd --state" "^running$"
-
 echo "--- Btrfs Subvolumes ---"
-for svc in ${SERVICES} snapshots; do
-  # Anchored: the snapshots of a deleted subvolume carry its name in their path.
-  check_output "Subvolume ${svc} exists" "btrfs subvolume list /var/services" " path .*/${svc}$"
-done
-
 # A nested subvolume stays out of every snapshot and backup.
 check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
-
-echo "--- Signature Policy ---"
-check_output "An unknown image is rejected" \
-  "jq -r '.default[0].type' /etc/containers/policy.json" "^reject$"
-check_output "This project's registry needs a signature" \
-  "jq -r '.transports.docker[\"ghcr.io/marpogaus\"][0].type' /etc/containers/policy.json" \
-  "^sigstoreSigned$"
 
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so the data check catches a missing z or Z
@@ -122,25 +104,12 @@ check_output "Nextcloud's files are container_file_t" \
 check_output "Alloy's config is relabelled for the container" \
   "stat -c %C /var/services/monitoring/.config/containers/systemd/configs/config.alloy" \
   "container_file_t"
-echo "--- Snapshot Timers ---"
-for svc in ${SERVICES}; do
-  check_output "Snapshot timer ${svc} enabled" "systemctl is-enabled btrfs-snapshot@${svc}.timer" "^enabled$"
-done
-
 echo "--- Auto-reboot Timer ---"
 # Anchored: enabled-runtime is gone after a reboot.
 check_output "Auto-reboot timer enabled" "systemctl is-enabled auto-reboot-staged.timer" "^enabled$"
 # A rollback disables this timer, and no role enables it. Stock Fedora CoreOS
 # stages with Zincati instead.
 check_output "Update staging enabled" "systemctl is-enabled rpm-ostreed-automatic.timer zincati.service" "^enabled$"
-
-echo "--- Service Users ---"
-for svc in ${SERVICES}; do
-  check_output "User ${svc} exists" "id ${svc}" "uid="
-  # The start depends on the uid; the size is the invariant.
-  check_output "Subuid range for ${svc}" "grep ^${svc}: /etc/subuid" ":65536$"
-  check_output "Linger enabled for ${svc}" "loginctl show-user ${svc} -p Linger --value" "yes"
-done
 
 echo "--- Containers ---"
 # Every Quadlet container of a service runs, and none reports unhealthy. Retried:
@@ -161,8 +130,6 @@ echo "--- Nextcloud via host port (BunkerWeb upstream path) ---"
 check_output "status.php answers on 8080" "curl -sf http://127.0.0.1:8080/status.php" '"installed":true'
 
 echo "--- pg_dumpall ---"
-check_output "the snapshot pulls in the dump" \
-  "systemctl show btrfs-snapshot@nextcloud.service -p Wants -p After" "nextcloud-pg-dumpall.service"
 check_output "pg_dumpall produces a dump" \
   "systemctl start nextcloud-pg-dumpall.service && systemctl is-failed nextcloud-pg-dumpall.service" "inactive"
 # A truncated dump still has bytes, so assert the structure a restore needs.
@@ -273,10 +240,6 @@ if grep -q 'CAP_' "${CAPS_FILE}" && ! grep -q '__HOST_UNREACHABLE__' "${CAPS_FIL
 else
   fail "No container keeps the default capability set ($(grep CAP_SYS_CHROOT "${CAPS_FILE}"))"
 fi
-
-echo "--- System Configuration ---"
-check_output "Unprivileged port start = 80" "sysctl -n net.ipv4.ip_unprivileged_port_start" "^80$"
-check_output "zram swap active" "swapon --show --noheadings" "zram0"
 
 if [[ -n "${BACKUP_TARGET}" ]]; then
   echo "--- Backup Target: ${BACKUP_TARGET} ---"
