@@ -1,5 +1,10 @@
 ---
 
+- name: Name the host after its inventory entry
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+    use: systemd
+
 - name: Ensure services root directory exists
   ansible.builtin.file:
     path: "{{ base_setup_services_dir }}"
@@ -241,7 +246,7 @@
   ansible.builtin.assert:
     that: base_setup_luks_passphrase | length > 0
     fail_msg: >-
-      base_setup_luks_passphrase is empty. Set it in secrets/vars.<name>.yml and keep
+      base_setup_luks_passphrase is empty. Set it in host_vars/<host>.yml and keep
       a copy off this machine: without it the backup cannot be read.
   when: base_setup_backup_targets | length > 0 or base_setup_iscsi_portal | length > 0
 

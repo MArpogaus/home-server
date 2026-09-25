@@ -3,6 +3,12 @@
   hosts: all
   gather_facts: true
   pre_tasks:
+    - name: Refuse a run without -l
+      ansible.builtin.assert:
+        that: ansible_limit is defined
+        fail_msg: Pass -l <host>. Without it the playbook runs on every host of the inventory.
+        quiet: true
+
     - name: Locate each service repository in services/
       ansible.builtin.set_fact:
         base_setup_services: >-
@@ -12,7 +18,8 @@
 
     - name: Run what this host needs before the base setup
       ansible.builtin.include_tasks: "{{ host_tasks_pre }}"
-      when: host_tasks_pre is defined
+      # A key test, so a value that does not resolve fails instead of skipping.
+      when: "'host_tasks_pre' in hostvars[inventory_hostname]"
   roles:
     - base_setup
   post_tasks:

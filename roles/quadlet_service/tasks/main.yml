@@ -39,6 +39,7 @@
         content: "{{ item.content }}"
         dest: "{{ quadlet_service_stage.path }}/{{ item.dest }}"
         mode: "0644"
+      diff: false
       loop: "{{ quadlet_service_extra_files | selectattr('content', 'defined') | list }}"
       loop_control:
         label: "{{ item.dest }}"
@@ -51,6 +52,7 @@
         src: "{{ item.src }}"
         dest: "{{ quadlet_service_stage.path }}/{{ item.path | regex_replace('\\.j2$', '') }}"
         mode: "0644"
+      diff: false
       loop: "{{ query('community.general.filetree', service_repo ~ '/quadlets/')
                 | selectattr('state', 'equalto', 'file') | selectattr('path', 'search', '\\.j2$') | list }}"
       loop_control:
@@ -130,7 +132,7 @@
 
     - name: Start the pod, or restart it when its files changed
       ansible.builtin.systemd_service:
-        name: "{{ quadlet_service_pod }}-pod.service"
+        name: "{{ service_name }}-pod.service"
         scope: user
         daemon_reload: "{{ quadlet_service_changed }}"
         state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_changed else 'started' }}"

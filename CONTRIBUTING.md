@@ -53,7 +53,6 @@ short sentences, one meaning per word, and the condition before the command.
 ## Checks in this repository
 
 - Hooks: the basics, shellcheck, ansible-lint and commitizen.
-- `.shellcheckrc` lets shellcheck follow `source lib.sh`.
 - Role variables are `<role>_*`.
 - `.github/renovate-image-tags.json` is the Renovate preset that the service
   repositories and this one extend. Here it bumps the digests of the

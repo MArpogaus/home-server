@@ -7,3 +7,6 @@
 [submodule "services/monitoring"]
 	path = services/monitoring
 	url = https://github.com/MArpogaus/home-server-monitoring.git
+[submodule "services/ntfy"]
+	path = services/ntfy
+	url = https://github.com/MArpogaus/home-server-ntfy.git

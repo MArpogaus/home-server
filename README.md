@@ -1,17 +1,18 @@
 # home-server
 
 This repository deploys a home server on Fedora CoreOS with rootless Podman.
-It holds the host roles, the playbook, the inventory, the deploy and test
-scripts, the Ignition config and the test VM. Each service is a repository of
+It holds the host roles, the playbook, the inventory, the functional test,
+the Ignition config and the test VM. Each service is a repository of
 its own, pinned as a submodule under `services/<name>`, so one commit here
 names every service version it deploys.
 
 | Repository | Where | Purpose |
 |---|---|---|
-| `home-server` | this one | Host setup, playbook, Ignition, test VM, scripts |
+| `home-server` | this one | Host setup, playbook, Ignition, test VM, functional test |
 | `home-server-nextcloud` | `services/nextcloud` | Nextcloud pod, role and custom image |
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
-| `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts to ntfy |
+| `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts |
+| `home-server-ntfy` | `services/ntfy` | Push notifications, the alerts on the phone |
 | `home-server-secrets` | `../home-server-secrets` | Credentials, SSH `known_hosts`, host settings and tasks (**private**) |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
@@ -26,7 +27,8 @@ git clone <the private secrets repo> home-server-secrets
 - **Host and platform.** The roles target stock Fedora CoreOS, installed from
   `ignition/`. SecureBlue's steps are platform files: `platform/secureblue.bu`
   for Ignition, and `platform/secureblue.yml`, which `site.yml` runs as
-  `host_tasks_pre` before `base_setup`.
+  `host_tasks_pre` before `base_setup`. The host is named after its inventory
+  entry.
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
@@ -48,23 +50,25 @@ git clone <the private secrets repo> home-server-secrets
 
 ## Deploy
 
-The controller needs Ansible Core 2.21 or newer. `secrets.example/` holds the
-templates for the secrets repository.
+The controller needs Ansible Core 2.21 or newer with passlib and bcrypt. Run
+every command from this repository: `ansible.cfg` names this inventory, the
+secrets repository's inventory after it, and the Vault password file.
+`secrets.example/` holds the templates for the secrets repository.
 
 ```bash
 uv tool install --reinstall ansible --with passlib --with bcrypt
+ansible-galaxy collection install -r requirements.yml   # again after requirements.yml changes
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
-echo 'export ANSIBLE_VAULT_PASSWORD_FILE=~/.config/home-server/vault-password' >> ~/.bashrc
 
 S=../home-server-secrets                   # a new secrets repository
-mkdir -p $S/secrets $S/ssh && git -C $S init -q
-cp secrets.example/vars.yml.example $S/secrets/vars.yml
-cp secrets.example/vars.host.yml.example $S/secrets/vars.test.yml
-echo 'secrets/vars*.yml diff=ansible-vault' > $S/.gitattributes
+git init -q $S && cp -r secrets.example/. $S/ && mkdir -p $S/ssh
+printf 'group_vars/*.yml diff=ansible-vault\nhost_vars/*.yml diff=ansible-vault\n' > $S/.gitattributes
 # fill in the values, then:
-ansible-vault encrypt $S/secrets/vars.yml $S/secrets/vars.test.yml
+ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 ```
+
+Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
 
 ### Test VM
 
@@ -74,40 +78,42 @@ and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 
 ```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
-./deploy.sh && ./functional_test.sh                                  # terminal 2, after the rebase
+ansible-playbook site.yml -l test && ./functional_test.sh test       # terminal 2, after the rebase
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
 
 `--fresh` deletes the disk and its `base` snapshot. For a controller in a
-container, start the VM with `--listen <address>` and run the scripts with
-`TEST_VM=1 TARGET_HOST=<address>`.
+container, start the VM with `--listen <address>` and add
+`-e ansible_host=<address>` to both commands.
 
 ### Real host
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
-needs 80. Copy `secrets.example/vars.host.yml.example` to
-`../home-server-secrets/secrets/vars.<host>.yml`, drop its self-signed and
-`-dev` lines, fill it in and encrypt it with `ansible-vault encrypt`.
+needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
+`secrets.example/host_vars/test.yml` to
+`../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
+lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
+host uses the agent.
 
 ```bash
 cd ignition
-INSTALLER=$(sed -n 's/^INSTALLER_IMAGE="\(.*\)"$/\1/p' build.sh)
-podman run --rm --security-opt label=disable -v "$PWD":/data -w /data "$INSTALLER" download -s stable -p metal -f iso
+podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
+  quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
 ./build.sh --platform ../platform/secureblue.bu ign    # render config.ign; read it
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
 ssh-keyscan -H <host> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
-TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./deploy.sh
-TARGET_HOST=<address> TARGET_PORT=22 TARGET_NAME=<host> SSH_AUTH_KEY=agent ./functional_test.sh
+ansible-playbook site.yml -l <host>
+./functional_test.sh <host>
 ```
 
 ## Configuration
 
-`secrets/vars.yml` holds what every host shares, and `secrets/vars.<name>.yml`
-one host's credentials and overrides. The role defaults files are the full
-reference.
+In the secrets repository, `group_vars/homeserver.yml` holds what every host
+shares, and `host_vars/<host>.yml` one host's credentials and overrides. The
+role defaults files are the full reference.
 
 | Variable | Required | Controls |
 |---|---|---|
@@ -115,7 +121,8 @@ reference.
 | `nextcloud_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
-| Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration". `deploy.sh` reads the ntfy token and `functional_test.sh` also the Grafana password, both from the secrets files |
+| Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration" |
+| ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_generate_self_signed_ssl`, `bunker_service_auto_lets_encrypt` | without public DNS | Self-signed certificate instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
@@ -124,19 +131,11 @@ reference.
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
-`openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`. The ntfy token:
-`echo "tk_$(openssl rand -hex 15 | cut -c1-29)"`.
+`openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
 
-| Script variable | Default | Selects |
-|---|---|---|
-| `TARGET_HOST`, `TARGET_PORT` | `127.0.0.1`, `2222` | The address |
-| `TARGET_NAME` | `test` | `secrets/vars.<name>.yml` |
-| `SECRETS_DIR` | `../home-server-secrets` | The secrets repository |
-| `SSH_KEY_FILE`, `SSH_AUTH_KEY` | `test/coreos_key`, `file` | The identity; `agent` uses the SSH agent |
-| `TEST_VM` | none | `1` marks another address as the test VM |
-| `SERVICES` | the host's `/etc/subuid` | The functional test's service users |
-| `SERVER_NAME` | `nextcloud_hostname` | The hostname the functional test calls |
-| `BACKUP_TARGET` | none | A target for a real backup in the functional test |
+`functional_test.sh <host>` passes further arguments to `ansible`, such as
+`-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also runs a real backup to
+that target.
 
 ## Adding a service
 
@@ -182,8 +181,9 @@ A service publishes on a loopback port that no other service uses:
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The reboot uses
   `--check-inhibitors=yes`, so it never interrupts a backup or a dump.
-- **Secrets go in as extra-vars.** They have the highest precedence, so no
-  inventory value can shadow one.
+- **The secrets repository is a second inventory.** `ansible.cfg` lists it
+  after this one, so its `group_vars/` and `host_vars/` win over this
+  repository's, and Ansible decrypts them by itself.
 
 ## Security
 
@@ -199,8 +199,8 @@ Covered:
   pids limit.
 - `policy.json` rejects every image that no service role declares
   (`home-server-template/README.md`, "Role contract").
-- The scripts check a real host against `ssh/known_hosts`. Only a loopback,
-  link-local or `TEST_VM=1` target named `test` skips the check.
+- SSH checks a real host against `ssh/known_hosts` of the secrets repository.
+  Only the inventory entry `test` skips the check.
 - Credentials in the secrets repository are Vault-encrypted. Keep a copy of
   the Vault password in a password manager: it also guards the LUKS passphrase.
 
@@ -217,8 +217,6 @@ Known gaps:
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 - No script restores a backup, and no `btrfs scrub` runs on a schedule.
-- A compromised ntfy reaches Loki and Alertmanager
-  (`home-server-monitoring/README.md`, "Specifics").
 
 SELinux exceptions:
 

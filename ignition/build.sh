@@ -1,9 +1,8 @@
 #!/bin/bash
-# Renders the Ignition config for the real hardware and writes it to a disk or
-# an ISO. It needs podman, which runs butane and the installer.
+# Renders the Ignition config for the real hardware and writes it into an
+# installer ISO. It needs podman, which runs butane and the installer.
 #
 #   ./build.sh [--platform <file.bu>] ign                      only render config.ign
-#   ./build.sh [--platform <file.bu>] install /dev/sdX         install onto that disk
 #   ./build.sh [--platform <file.bu>] iso <live.iso> /dev/sdX  write an installer ISO
 #
 # <live.iso> is the stock Fedora CoreOS live image. /dev/sdX is the disk of the
@@ -21,7 +20,7 @@ BUTANE_CONFIG="${SCRIPT_DIR}/config.bu"
 IGNITION="${SCRIPT_DIR}/config.ign"
 INSTALLER_IMAGE="quay.io/coreos/coreos-installer:release@sha256:2c94387e76ae351a4183f29707fd7be57a9290675524391bdb17b40de1e088ff"
 
-usage() { echo "usage: $0 [--platform <file.bu>] [ign | install /dev/sdX | iso <live.iso> /dev/sdX]"; exit 1; }
+usage() { echo "usage: $0 [--platform <file.bu>] [ign | iso <live.iso> /dev/sdX]"; exit 1; }
 
 PLATFORM=""
 if [ "${1:-}" = "--platform" ]; then
@@ -32,20 +31,10 @@ fi
 MODE="${1:-ign}"
 case "${MODE}" in
 ign) ;;
-install)
-	DEVICE="${2:-}"; [ -n "${DEVICE}" ] || usage
-	[ -b "${DEVICE}" ] || { echo "ERROR: ${DEVICE} is not a block device"; exit 1; }
-	;;
 iso)
 	SRC_ISO="${2:-}"; DEVICE="${3:-}"
 	[ -n "${SRC_ISO}" ] && [ -n "${DEVICE}" ] || usage
-	[ -f "${SRC_ISO}" ] || {
-		echo "ERROR: no such file: ${SRC_ISO}"
-		echo "       Fetch the live ISO into this directory first:"
-		echo "       podman run --rm --security-opt label=disable -v \"${SCRIPT_DIR}\":/data -w /data \\"
-		echo "           ${INSTALLER_IMAGE} download -s stable -p metal -f iso"
-		exit 1
-	}
+	[ -f "${SRC_ISO}" ] || { echo "ERROR: no such file: ${SRC_ISO}"; exit 1; }
 	;;
 *) usage ;;
 esac
@@ -90,15 +79,6 @@ fi
 echo "Wrote ${IGNITION}"
 
 case "${MODE}" in
-install)
-	echo "CAUTION: this erases ${DEVICE}."
-	read -rp "Type the device again to confirm: " confirm
-	[ "${confirm}" = "${DEVICE}" ] || { echo "Aborted."; exit 1; }
-	sudo podman run --pull=always --privileged --rm \
-		-v /dev:/dev -v /run/udev:/run/udev -v "${SCRIPT_DIR}":/data -w /data \
-		"${INSTALLER_IMAGE}" \
-		install "${DEVICE}" -i config.ign
-	;;
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
 	podman run --pull=always --rm --security-opt label=disable \

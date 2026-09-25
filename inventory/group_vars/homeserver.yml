@@ -1,4 +1,6 @@
 ---
+ansible_user: core
+
 # What this deployment runs. base_setup configures a host; this says what the
 # host is for, so the role carries no service names of its own.
 # A uid never changes: README.md, "Adding a service".
@@ -11,16 +13,25 @@ base_setup_services:
     uid: 1002
     # Alloy reads the host journal.
     groups: [systemd-journal]
+  - name: ntfy
+    uid: 1003
 
 # The public hostnames are in the secrets; ntfy is optional.
 nextcloud_service_trusted_domains: "{{ nextcloud_hostname }}"
-monitoring_service_ntfy_base_url: >-
+ntfy_service_base_url: >-
   {{ ('https://' ~ ntfy_hostname) if ntfy_hostname | default('') | length > 0 else 'http://127.0.0.1:8081' }}
+
+# Alertmanager posts to ntfy while ntfy is deployed.
+ntfy_deployed: "{{ 'ntfy' in base_setup_services | map(attribute='name') }}"
+monitoring_service_host_ports: "{{ [8081] if ntfy_deployed else [] }}"
+monitoring_service_alert_webhook_url: >-
+  {{ 'http://127.0.0.1:8081/alerts?template=alertmanager' if ntfy_deployed else '' }}
+monitoring_service_alert_webhook_token: "{{ ntfy_service_token | default('') }}"
 
 # The sites the proxy fronts. home-server-bunker/README.md, "Sites" and
 # "Specifics", explain the settings.
 bunker_service_sites: >-
-  {{ [nextcloud_site] + ([ntfy_site] if ntfy_hostname | default('') | length > 0 else []) }}
+  {{ [nextcloud_site] + ([ntfy_site] if ntfy_deployed and ntfy_hostname | default('') | length > 0 else []) }}
 
 nextcloud_site:
   name: "{{ nextcloud_hostname }}"
