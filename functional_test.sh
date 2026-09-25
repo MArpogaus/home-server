@@ -1,11 +1,28 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib.sh
-source "${SCRIPT_DIR}/lib.sh"
-require_vault_password
-ssh_opts
+# Usage: ./functional_test.sh <inventory host> [ansible options]
+HOST="${1:?usage: $0 <inventory host> [ansible options]}"
+shift
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# One inventory lookup gives the connection and the values the checks need. The
+# secrets reach this script through a pipe, never a command line.
+mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible.posix.json \
+  ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
+    ansible_ssh_common_args | default(""), ansible_ssh_private_key_file | default(""),
+    base_setup_services | map(attribute="name") | join(" "), nextcloud_hostname,
+    monitoring_service_grafana_admin_password, monitoring_service_ntfy_token] }}' 2>/dev/null \
+  | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
+[[ ${#V[@]} -eq 8 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
+TARGET_HOST=${V[0]}
+TARGET_PORT=${V[1]}
+read -ra HOST_KEY_OPTS <<<"${V[2]}"
+SSH_OPTS=("${HOST_KEY_OPTS[@]}")
+[[ -n "${V[3]}" ]] && SSH_OPTS+=(-i "${V[3]}" -o IdentitiesOnly=yes)
+SERVICES=${V[4]}
+SERVER_NAME=${V[5]}
+
 CTL_DIR=$(mktemp -d)
 trap 'rm -rf "${CTL_DIR}"' EXIT
 SSH=(ssh -p "${TARGET_PORT}" "${SSH_OPTS[@]}" -o LogLevel=ERROR
@@ -44,7 +61,7 @@ run_user() {
 
 # As core, with `lq <path> [curl args]` querying Loki through Grafana's
 # datasource proxy. The admin credential travels on ssh stdin.
-GRAFANA_CFG=$(printf 'user = "admin:%s"\n' "$(read_var monitoring_service_grafana_admin_password)")
+GRAFANA_CFG=$(printf 'user = "admin:%s"\n' "${V[6]}")
 run_loki() {
   remote "bash -c 'cfg=\$(cat); lq() { curl -sf -K <(printf %s \"\$cfg\") \"http://127.0.0.2:3000/api/datasources/proxy/uid/loki\$@\"; }; eval \"\$(echo $(b64 "$1") | base64 -d)\"'" "${GRAFANA_CFG}"
 }
@@ -53,9 +70,6 @@ run_loki() {
 # created yet reads as 0 rather than an empty field.
 NOTIFY_AWK="awk '/^loki_prometheus_notifications_sent_total/{s=\$2} /^loki_prometheus_notifications_errors_total/{e=\$2} END{print (s+0) \" \" (e+0)}'"
 
-# The host knows which services it carries, so a service the inventory adds
-# is tested too.
-SERVICES="${SERVICES:-$(run_root "cut -d: -f1 /etc/subuid | grep -vx core | tr '\\n' ' '")}"
 
 expect() {
   if grep -q -- "$3" <<<"$2"; then
@@ -68,6 +82,9 @@ check_output() { expect "$1" "$(run_root "$2")" "$3"; }
 RULES_HEALTH=$'grep -o \'"health":"[a-z]*"\' | awk \'/err/{e++} /ok/{o++} END{print "err=" e+0 " ok=" o+0}\''
 check_user_output() { expect "$2" "$(run_user "$1" "$3")" "$4"; }
 check_loki() { expect "$1" "$(run_loki "$2")" "$3"; }
+
+[[ "$(remote true)" != __HOST_UNREACHABLE__ ]] \
+  || { echo "ERROR: cannot reach core@${TARGET_HOST}:${TARGET_PORT}" >&2; exit 1; }
 
 echo "=== Functional tests ==="
 echo ""
@@ -173,7 +190,6 @@ check_loki "Every Loki alert rule evaluates" \
   "^err=0 ok=[1-9]"
 
 echo "--- HTTP/HTTPS ---"
-SERVER_NAME="${SERVER_NAME:-$(read_var nextcloud_hostname)}"
 # DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server:
 # with TLS configured, BunkerWeb redirects HTTP to HTTPS, so 301 is the pass.
 check_output "HTTP redirects to HTTPS" \
@@ -191,7 +207,7 @@ check_output "ntfy refuses anonymous publishing" \
 # The token travels on ssh stdin into curl's config, so it is on no command line.
 expect "ntfy accepts the token" \
   "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts' \
-    "$(printf 'header = "Authorization: Bearer %s"\n' "$(read_var monitoring_service_ntfy_token)")")" \
+    "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
   "^200$"
 
 # One burst of failed logins walks the whole path: journald, Alloy, Loki, the
