@@ -7,9 +7,9 @@
 nextcloud_service_db_password: ""
 nextcloud_service_admin_password: ""
 # The phone logs in to ntfy as user ntfy with this password.
-monitoring_service_ntfy_password: ""
+ntfy_service_password: ""
 # tk_ and 29 lowercase letters and digits. Alertmanager uses it.
-monitoring_service_ntfy_token: ""
+ntfy_service_token: ""
 monitoring_service_grafana_admin_password: ""
 
 # A SecureBlue host needs the platform steps. A host with steps of its own names

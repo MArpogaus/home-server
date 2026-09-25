@@ -12,7 +12,7 @@ mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible
   ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
     ansible_ssh_common_args | default(""), ansible_ssh_private_key_file | default(""),
     base_setup_services | map(attribute="name") | join(" "), nextcloud_hostname,
-    monitoring_service_grafana_admin_password, monitoring_service_ntfy_token] }}' 2>/dev/null \
+    monitoring_service_grafana_admin_password, ntfy_service_token | default("")] }}' 2>/dev/null \
   | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
 [[ ${#V[@]} -eq 8 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
 TARGET_HOST=${V[0]}
@@ -168,14 +168,16 @@ check_output "HTTPS reaches Nextcloud through the proxy" \
   "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/status.php" \
   '"installed":true'
 
-echo "--- ntfy ---"
-check_output "ntfy refuses anonymous publishing" \
-  "curl -s -o /dev/null -w %{http_code} -d probe http://127.0.0.1:8081/alerts" "^403$"
-# The token travels on ssh stdin into curl's config, so it is on no command line.
-expect "ntfy accepts the token" \
-  "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts' \
-    "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
-  "^200$"
+if [[ " ${SERVICES} " == *" ntfy "* ]]; then
+  echo "--- ntfy ---"
+  check_output "ntfy refuses anonymous publishing" \
+    "curl -s -o /dev/null -w %{http_code} -d probe http://127.0.0.1:8081/alerts" "^403$"
+  # The token travels on ssh stdin into curl's config, so it is on no command line.
+  expect "ntfy accepts the token" \
+    "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts' \
+      "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
+    "^200$"
+fi
 
 # One burst of failed logins walks the whole path: journald, Alloy, Loki, the
 # ruler and Alertmanager.

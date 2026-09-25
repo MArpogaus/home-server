@@ -11,7 +11,8 @@ names every service version it deploys.
 | `home-server` | this one | Host setup, playbook, Ignition, test VM, functional test |
 | `home-server-nextcloud` | `services/nextcloud` | Nextcloud pod, role and custom image |
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
-| `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts to ntfy |
+| `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts |
+| `home-server-ntfy` | `services/ntfy` | Push notifications, the alerts on the phone |
 | `home-server-secrets` | `../home-server-secrets` | Credentials, SSH `known_hosts`, host settings and tasks (**private**) |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
@@ -120,7 +121,8 @@ role defaults files are the full reference.
 | `nextcloud_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
-| Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration". `functional_test.sh` reads the ntfy token and the Grafana password through the inventory |
+| Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration" |
+| ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_generate_self_signed_ssl`, `bunker_service_auto_lets_encrypt` | without public DNS | Self-signed certificate instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
@@ -129,8 +131,7 @@ role defaults files are the full reference.
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
-`openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`. The ntfy token:
-`echo "tk_$(openssl rand -hex 15 | cut -c1-29)"`.
+`openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
 
 `functional_test.sh <host>` passes further arguments to `ansible`, such as
 `-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also runs a real backup to
@@ -216,8 +217,6 @@ Known gaps:
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 - No script restores a backup, and no `btrfs scrub` runs on a schedule.
-- A compromised ntfy reaches Loki and Alertmanager
-  (`home-server-monitoring/README.md`, "Specifics").
 
 SELinux exceptions:
 
