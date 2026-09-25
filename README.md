@@ -115,7 +115,7 @@ reference.
 | `nextcloud_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
-| Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration". `deploy.sh` and `functional_test.sh` read the ntfy token and the Grafana password from the secrets files |
+| Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration". `deploy.sh` reads the ntfy token and `functional_test.sh` also the Grafana password, both from the secrets files |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_generate_self_signed_ssl`, `bunker_service_auto_lets_encrypt` | without public DNS | Self-signed certificate instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
