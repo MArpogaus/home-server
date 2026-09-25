@@ -2,11 +2,13 @@
 # Copy to inventory.yml in the secrets repository. ansible.cfg lists it after
 # this repository's inventory, so its group_vars/ and host_vars/ win.
 homeserver:
+  vars:
+    # Every host but the test VM is checked against ssh/known_hosts.
+    ansible_ssh_common_args: >-
+      -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts
   hosts:
     <host>:
       ansible_host: <address>
-      ansible_ssh_common_args: >-
-        -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts
     test:
       ansible_host: 127.0.0.1
       ansible_port: 2222
