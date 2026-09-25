@@ -19,4 +19,6 @@ jobs:
         with:
           # ansible-lint's hook manifest sets language_version: python3.14.
           python-version: '3.14'
+      # ansible.cfg names a Vault password file, and lint needs one to exist.
+      - run: mkdir -p ~/.config/home-server && echo ci > ~/.config/home-server/vault-password
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
