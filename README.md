@@ -26,7 +26,8 @@ git clone <the private secrets repo> home-server-secrets
 - **Host and platform.** The roles target stock Fedora CoreOS, installed from
   `ignition/`. SecureBlue's steps are platform files: `platform/secureblue.bu`
   for Ignition, and `platform/secureblue.yml`, which `site.yml` runs as
-  `host_tasks_pre` before `base_setup`.
+  `host_tasks_pre` before `base_setup`. The host is named after its inventory
+  entry.
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
