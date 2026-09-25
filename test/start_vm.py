@@ -106,10 +106,8 @@ def ensure_disk(fresh):
         if not os.path.exists(DISK_XZ):
             print(f"Downloading Fedora CoreOS {FCOS_VERSION}")
             urllib.request.urlretrieve(URL, DISK_XZ)
-        digest = hashlib.sha256()
         with open(DISK_XZ, "rb") as handle:
-            for block in iter(lambda: handle.read(1 << 20), b""):
-                digest.update(block)
+            digest = hashlib.file_digest(handle, "sha256")
         if digest.hexdigest() != FCOS_SHA256:
             os.remove(DISK_XZ)
             fail(f"{DISK_XZ} does not match FCOS_SHA256; deleted it")

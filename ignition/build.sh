@@ -12,6 +12,8 @@
 # --platform names a Butane fragment that the deployment provides, such as a
 # rebase to a derivative image. It is merged into the config.
 set -euo pipefail
+# config.bu and config.ign carry the console password hash.
+umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE="${SCRIPT_DIR}/config.bu.template"
@@ -40,7 +42,7 @@ iso)
 	[ -f "${SRC_ISO}" ] || {
 		echo "ERROR: no such file: ${SRC_ISO}"
 		echo "       Fetch the live ISO into this directory first:"
-		echo "       podman run --rm -v \"${SCRIPT_DIR}\":/data:z -w /data \\"
+		echo "       podman run --rm --security-opt label=disable -v \"${SCRIPT_DIR}\":/data -w /data \\"
 		echo "           ${INSTALLER_IMAGE} download -s stable -p metal -f iso"
 		exit 1
 	}
@@ -99,8 +101,8 @@ install)
 	;;
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
-	podman run --pull=always --rm \
-		-v "${SCRIPT_DIR}":/data:z -v "${SRC_DIR}":/iso:z -w /data \
+	podman run --pull=always --rm --security-opt label=disable \
+		-v "${SCRIPT_DIR}":/data -v "${SRC_DIR}":/iso -w /data \
 		"${INSTALLER_IMAGE}" \
 		iso customize --force --dest-ignition config.ign \
 		--dest-device "${DEVICE}" \

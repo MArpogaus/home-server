@@ -42,8 +42,7 @@ deploy_ansible() {
     ansible-playbook -i "${SCRIPT_DIR}/inventory/hosts.ini" site.yml \
         --extra-vars "@${SECRETS_DIR}/secrets/vars.yml" \
         --extra-vars "@${SECRETS_DIR}/secrets/vars.${TARGET_NAME}.yml" \
-        --extra-vars "ansible_host=${TARGET_HOST} ansible_port=${TARGET_PORT}" \
-        --extra-vars "secrets_dir=${SECRETS_DIR}"
+        --extra-vars "ansible_host=${TARGET_HOST} ansible_port=${TARGET_PORT}"
 }
 
 notify() {

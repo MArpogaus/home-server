@@ -131,7 +131,7 @@
 - name: Load the new units
   ansible.builtin.meta: flush_handlers
 
-# Readable by rootless containers without a relabel. README.md, "Metrics".
+# Readable by rootless containers without a relabel.
 - name: Label the textfile metrics directory for containers
   community.general.sefcontext:
     target: "{{ base_setup_textfile_dir }}(/.*)?"

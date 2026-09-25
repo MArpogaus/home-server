@@ -96,8 +96,8 @@ check_output "This project's registry needs a signature" \
   "^sigstoreSigned$"
 
 echo "--- SELinux Labels ---"
-# A label stays on disk once set, so these catch a missing z or Z on a fresh
-# host only.
+# A label stays on disk once set, so the data check catches a missing z or Z
+# on a fresh host only.
 check_user_output nextcloud "Nextcloud logs to the journal" \
   "podman exec -u www-data nextcloud-app php occ log:manage" "backend: syslog"
 check_output "Nextcloud's files are container_file_t" \

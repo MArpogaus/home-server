@@ -2,7 +2,7 @@
 # Sourced by deploy.sh and functional_test.sh after they set SCRIPT_DIR.
 
 SECRETS_DIR="${SECRETS_DIR:-${SCRIPT_DIR}/../home-server-secrets}"
-SSH_KEY_FILE="${SSH_KEY_FILE:-${SECRETS_DIR}/ssh/coreos_key}"
+SSH_KEY_FILE="${SSH_KEY_FILE:-${SCRIPT_DIR}/test/coreos_key}"
 TARGET_HOST="${TARGET_HOST:-127.0.0.1}"
 TARGET_NAME="${TARGET_NAME:-test}"
 TARGET_PORT="${TARGET_PORT:-2222}"
@@ -17,7 +17,7 @@ export ANSIBLE_VAULT_PASSWORD_FILE="${ANSIBLE_VAULT_PASSWORD_FILE:-${HOME}/.conf
 require_vault_password() {
     [[ -s "${ANSIBLE_VAULT_PASSWORD_FILE}" ]] || {
         echo "ERROR: no vault password in ${ANSIBLE_VAULT_PASSWORD_FILE}." >&2
-        echo "       README.md, \"Vault\", has the setup." >&2
+        echo "       README.md, \"Deploy\", has the setup." >&2
         exit 1
     }
 }
