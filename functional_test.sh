@@ -70,7 +70,6 @@ run_loki() {
 # created yet reads as 0 rather than an empty field.
 NOTIFY_AWK="awk '/^loki_prometheus_notifications_sent_total/{s=\$2} /^loki_prometheus_notifications_errors_total/{e=\$2} END{print (s+0) \" \" (e+0)}'"
 
-
 expect() {
   if grep -q -- "$3" <<<"$2"; then
     pass "$1"
