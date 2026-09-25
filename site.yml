@@ -12,8 +12,8 @@
 
     - name: Run what this host needs before the base setup
       ansible.builtin.include_tasks: "{{ host_tasks_pre }}"
-      # Not `is defined`: a value that does not resolve must fail, not skip.
-      when: host_tasks_pre | default('') | length > 0
+      # A key test, so a value that does not resolve fails instead of skipping.
+      when: "'host_tasks_pre' in hostvars[inventory_hostname]"
   roles:
     - base_setup
   post_tasks:
