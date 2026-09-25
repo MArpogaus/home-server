@@ -62,7 +62,6 @@ mkdir -p -m 700 ~/.config/home-server
 
 S=../home-server-secrets                   # a new secrets repository
 git init -q $S && cp -r secrets.example/. $S/ && mkdir -p $S/ssh
-mv $S/host_vars/host.yml $S/host_vars/test.yml
 printf 'group_vars/*.yml diff=ansible-vault\nhost_vars/*.yml diff=ansible-vault\n' > $S/.gitattributes
 # fill in the values, then:
 ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
@@ -92,7 +91,7 @@ container, start the VM with `--listen <address>` and add
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
 needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
-`secrets.example/host_vars/host.yml` to
+`secrets.example/host_vars/test.yml` to
 `../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
 host uses the agent.
