@@ -19,7 +19,7 @@ TARGET_HOST=${V[0]}
 TARGET_PORT=${V[1]}
 read -ra HOST_KEY_OPTS <<<"${V[2]}"
 SSH_OPTS=("${HOST_KEY_OPTS[@]}")
-[[ -n "${V[3]}" ]] && SSH_OPTS+=(-i "${V[3]}" -o IdentitiesOnly=yes)
+[[ -n "${V[3]}" ]] && SSH_OPTS+=(-i "${V[3]}")
 SERVICES=${V[4]}
 SERVER_NAME=${V[5]}
 
