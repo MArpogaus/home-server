@@ -1,14 +1,14 @@
 # home-server
 
 This repository deploys a home server on Fedora CoreOS with rootless Podman.
-It holds the host roles, the playbook, the inventory, the deploy and test
-scripts, the Ignition config and the test VM. Each service is a repository of
+It holds the host roles, the playbook, the inventory, the functional test,
+the Ignition config and the test VM. Each service is a repository of
 its own, pinned as a submodule under `services/<name>`, so one commit here
 names every service version it deploys.
 
 | Repository | Where | Purpose |
 |---|---|---|
-| `home-server` | this one | Host setup, playbook, Ignition, test VM, scripts |
+| `home-server` | this one | Host setup, playbook, Ignition, test VM, functional test |
 | `home-server-nextcloud` | `services/nextcloud` | Nextcloud pod, role and custom image |
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
 | `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts to ntfy |
