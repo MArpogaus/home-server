@@ -67,8 +67,7 @@ printf 'group_vars/*.yml diff=ansible-vault\nhost_vars/*.yml diff=ansible-vault\
 ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 ```
 
-Every playbook run takes `-l <host>`: without it, the playbook runs on every
-host of the inventory.
+Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
 
 ### Test VM
 
