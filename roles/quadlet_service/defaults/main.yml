@@ -1,5 +1,4 @@
 ---
-quadlet_service_pod: "{{ service_name }}"
 quadlet_service_config_modes: {}
 quadlet_service_restart: false
 quadlet_service_extra_files: []

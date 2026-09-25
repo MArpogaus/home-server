@@ -130,7 +130,7 @@
 
     - name: Start the pod, or restart it when its files changed
       ansible.builtin.systemd_service:
-        name: "{{ quadlet_service_pod }}-pod.service"
+        name: "{{ service_name }}-pod.service"
         scope: user
         daemon_reload: "{{ quadlet_service_changed }}"
         state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_changed else 'started' }}"
