@@ -1,4 +1,62 @@
 ---
+- name: Assert the required variables are set
+  ansible.builtin.assert:
+    # An unset, null or empty value compares as ''; no regex means not empty.
+    that: lookup('vars', item.key, default='') | default('', true) | string is match(item.value or '.')
+    fail_msg: >-
+      Set {{ item.key }}{{ (' to match ' ~ item.value) if item.value else '' }}.
+      home-server-{{ service_name }}/README.md, "Configuration".
+    quiet: true
+  loop: "{{ quadlet_service_required | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Assert every container has a memory ceiling
+  ansible.builtin.assert:
+    that: quadlet_service_memory.keys() | sort == quadlet_service_containers | sort
+    fail_msg: >-
+      The memory ceilings name {{ quadlet_service_memory.keys() | sort | join(', ') }},
+      the containers are {{ quadlet_service_containers | sort | join(', ') }}.
+    quiet: true
+  vars:
+    quadlet_service_containers: >-
+      {{ query('community.general.filetree', service_repo ~ '/quadlets/') | map(attribute='path')
+         | select('match', '^' ~ service_name ~ '-[^/]+[.]container([.]j2)?$')
+         | map('regex_replace', '^' ~ service_name ~ '-', '') | map('regex_replace', '[.]container([.]j2)?$', '') | list }}
+
+# An empty value is an optional secret that is not set.
+- name: Store the secrets as Podman secrets
+  become: true
+  become_user: "{{ service_name }}"
+  vars:
+    quadlet_service_secret_items: "{{ quadlet_service_secrets | dict2items | rejectattr('value', 'eq', '') }}"
+  block:
+    # The | after the value keeps Ansible from stripping a trailing newline off it.
+    - name: Read the stored secrets
+      ansible.builtin.command:
+        cmd: podman secret inspect --showsecret --format {% raw %}'{{.SecretData}}|'{% endraw %} {{ item.key }}
+      loop: "{{ quadlet_service_secret_items }}"
+      loop_control:
+        label: "{{ item.key }}"
+      register: quadlet_service_secret_stored
+      changed_when: false
+      failed_when: false
+      no_log: true
+
+    # A container reads a secret when it starts, so a new value restarts the pod.
+    - name: Replace the secrets whose value changed
+      ansible.builtin.command:
+        cmd: podman secret create --replace {{ item.item.key }} -
+        stdin: "{{ item.item.value | string }}"
+        stdin_add_newline: false
+      loop: "{{ quadlet_service_secret_stored.results }}"
+      loop_control:
+        label: "{{ item.item.key }}"
+      when: item.rc != 0 or item.stdout != (item.item.value | string) ~ '|'
+      register: quadlet_service_secret_replaced
+      changed_when: true
+      no_log: true
+
 # One archive per service instead of one SSH round trip per file.
 # README.md, "Design decisions".
 - name: Stage the Quadlets on the controller
@@ -24,6 +82,10 @@
           cp -r {{ (role_path ~ '/files/container.d') | quote }} "$stage/"
           cp -r {{ (service_repo ~ '/quadlets/.') | quote }} "$stage/"
           find "$stage" -name '*.j2' -delete
+          {% for name, size in quadlet_service_memory.items() %}
+          mkdir -p "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d') | quote }}
+          printf '[Container]\nMemory=%s\n' {{ size | quote }} > "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d/memory.conf') | quote }}
+          {% endfor %}
           {% for f in quadlet_service_extra_files %}
           mkdir -p "$(dirname "$stage"/{{ f.dest | quote }})"
           {% if f.src is defined %}
@@ -57,18 +119,6 @@
                 | selectattr('state', 'equalto', 'file') | selectattr('path', 'search', '\\.j2$') | list }}"
       loop_control:
         label: "{{ item.path }}"
-      delegate_to: localhost
-      become: false
-      changed_when: false
-
-    # In the stage, so the mode is part of the archive and its checksum.
-    - name: Restrict the config files that must not be world-readable
-      ansible.builtin.file:
-        path: "{{ quadlet_service_stage.path }}/configs/{{ item.key }}"
-        mode: "{{ item.value }}"
-      loop: "{{ quadlet_service_config_modes | dict2items }}"
-      loop_control:
-        label: "{{ item.key }}"
       delegate_to: localhost
       become: false
       changed_when: false
@@ -135,7 +185,7 @@
         name: "{{ service_name }}-pod.service"
         scope: user
         daemon_reload: "{{ quadlet_service_changed }}"
-        state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_changed else 'started' }}"
+        state: "{{ 'restarted' if quadlet_service_restart | bool or quadlet_service_changed or quadlet_service_secret_replaced is changed else 'started' }}"
       become: true
       become_user: "{{ service_name }}"
       vars:
