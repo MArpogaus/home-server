@@ -6,6 +6,6 @@
 
 # The public hostnames. The proxy sites, the trusted domain and the ntfy URL
 # follow from them.
-nextcloud_hostname: cloud.example.com
+nextcloud_service_hostname: cloud.example.com
 # The ntfy site needs its own DNS record. Empty: no ntfy site.
-ntfy_hostname: ""
+ntfy_service_hostname: ""
