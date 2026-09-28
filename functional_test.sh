@@ -11,10 +11,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible.posix.json \
   ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
     ansible_ssh_common_args | default(""), ansible_ssh_private_key_file | default(""),
-    base_setup_services | map(attribute="name") | join(" "), nextcloud_hostname,
-    monitoring_service_grafana_admin_password, ntfy_service_token | default("")] }}' 2>/dev/null \
+    base_setup_services | map(attribute="name") | join(" "), nextcloud_service_hostname,
+    monitoring_service_grafana_admin_password, ntfy_service_token | default(""),
+    (base_setup_services | selectattr("name", "eq", "nextcloud") | first).port, ntfy_port] }}' 2>/dev/null \
   | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
-[[ ${#V[@]} -eq 8 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
+[[ ${#V[@]} -eq 10 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
 TARGET_HOST=${V[0]}
 TARGET_PORT=${V[1]}
 read -ra HOST_KEY_OPTS <<<"${V[2]}"
@@ -22,6 +23,8 @@ SSH_OPTS=("${HOST_KEY_OPTS[@]}")
 [[ -n "${V[3]}" ]] && SSH_OPTS+=(-i "${V[3]}")
 SERVICES=${V[4]}
 SERVER_NAME=${V[5]}
+NEXTCLOUD_PORT=${V[8]}
+NTFY_PORT=${V[9]}
 
 CTL_DIR=$(mktemp -d)
 trap 'rm -rf "${CTL_DIR}"' EXIT
@@ -126,7 +129,7 @@ for svc in ${SERVICES}; do
 done
 
 echo "--- Nextcloud via host port (BunkerWeb upstream path) ---"
-check_output "status.php answers on 8080" "curl -sf http://127.0.0.1:8080/status.php" '"installed":true'
+check_output "status.php answers on the loopback port" "curl -sf http://127.0.0.1:${NEXTCLOUD_PORT}/status.php" '"installed":true'
 
 echo "--- pg_dumpall ---"
 check_output "pg_dumpall produces a dump" \
@@ -170,10 +173,10 @@ check_output "HTTPS reaches Nextcloud through the proxy" \
 if [[ " ${SERVICES} " == *" ntfy "* ]]; then
   echo "--- ntfy ---"
   check_output "ntfy refuses anonymous publishing" \
-    "curl -s -o /dev/null -w %{http_code} -d probe http://127.0.0.1:8081/alerts" "^403$"
+    "curl -s -o /dev/null -w %{http_code} -d probe http://127.0.0.1:${NTFY_PORT}/alerts" "^403$"
   # The token travels on ssh stdin into curl's config, so it is on no command line.
   expect "ntfy accepts the token" \
-    "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:8081/alerts' \
+    "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:'"${NTFY_PORT}"'/alerts' \
       "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
     "^200$"
 fi

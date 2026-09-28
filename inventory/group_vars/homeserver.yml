@@ -2,11 +2,12 @@
 ansible_user: core
 
 # What this deployment runs. base_setup configures a host; this says what the
-# host is for, so the role carries no service names of its own.
-# A uid never changes: README.md, "Adding a service".
+# host is for, so the role carries no service names of its own. A uid never
+# changes: README.md, "Adding a service".
 base_setup_services:
   - name: nextcloud
     uid: 82
+    port: 8080
   - name: bunker
     uid: 1001
   - name: monitoring
@@ -15,48 +16,45 @@ base_setup_services:
     groups: [systemd-journal]
   - name: ntfy
     uid: 1003
+    port: 8081
 
-# The public hostnames are in the secrets; ntfy is optional.
-nextcloud_service_trusted_domains: "{{ nextcloud_hostname }}"
-ntfy_service_base_url: >-
-  {{ ('https://' ~ ntfy_hostname) if ntfy_hostname | default('') | length > 0 else 'http://127.0.0.1:8081' }}
+# The public hostnames and the credentials are in the secrets repository.
+
+# Settings of this deployment. Each service merges them over its own defaults.
+nextcloud_service_config:
+  system:
+    default_phone_region: DE
+bunker_service_config:
+  WHITELIST_COUNTRY: DE CH AT
 
 # Alertmanager posts to ntfy while ntfy is deployed.
-ntfy_deployed: "{{ 'ntfy' in base_setup_services | map(attribute='name') }}"
-monitoring_service_host_ports: "{{ [8081] if ntfy_deployed else [] }}"
-monitoring_service_alert_webhook_url: >-
-  {{ 'http://127.0.0.1:8081/alerts?template=alertmanager' if ntfy_deployed else '' }}
+ntfy_port: "{{ base_setup_services | selectattr('name', 'eq', 'ntfy') | map(attribute='port') | first | default('') }}"
+monitoring_service_host_ports: "{{ [ntfy_port] if ntfy_port else [] }}"
+monitoring_service_alert_webhook_url: "{{ ('http://127.0.0.1:' ~ ntfy_port ~ '/alerts?template=alertmanager') if ntfy_port else '' }}"
 monitoring_service_alert_webhook_token: "{{ ntfy_service_token | default('') }}"
 
-# The sites the proxy fronts. home-server-bunker/README.md, "Sites" and
+# The proxy sites, keyed by service. home-server-bunker/README.md, "Sites" and
 # "Specifics", explain the settings.
-bunker_service_sites: >-
-  {{ [nextcloud_site] + ([ntfy_site] if ntfy_deployed and ntfy_hostname | default('') | length > 0 else []) }}
-
-nextcloud_site:
-  name: "{{ nextcloud_hostname }}"
-  upstream: "http://{{ bunker_service_host_loopback_address }}:8080"
-  options:
-    REVERSE_PROXY_WS: "yes"
-    MAX_CLIENT_SIZE: "15G"
-    REFERRER_POLICY: "no-referrer"
-    ALLOWED_METHODS: "GET|POST|HEAD|COPY|DELETE|LOCK|MKCOL|MOVE|PROPFIND|PROPPATCH|PUT|UNLOCK|OPTIONS|REPORT|SEARCH"
-    BAD_BEHAVIOR_STATUS_CODES: "400 401 403 405 444"
-    BAD_BEHAVIOR_THRESHOLD: "25"
-    MODSECURITY_CRS_PLUGINS: "nextcloud-rule-exclusions"
-  limit_req_urls:
-    - {url: /apps, rate: 5r/s}
-    - {url: /apps/text/session/sync, rate: 8r/s}
-    - {url: /core/preview, rate: 5r/s}
-    - {url: /remote.php/, rate: 8r/s}
-    - {url: /push/ws, rate: 8r/s}
-    - {url: /apps/memories/api/, rate: 8r/s}
-
-ntfy_site:
-  name: "{{ ntfy_hostname }}"
-  upstream: "http://{{ bunker_service_host_loopback_address }}:8081"
-  options:
-    REVERSE_PROXY_WS: "yes"
-    ALLOWED_METHODS: "GET|POST|HEAD|PUT|OPTIONS"
-    USE_MODSECURITY: "no"
-    BAD_BEHAVIOR_STATUS_CODES: "400 403 405 444"
+bunker_service_sites:
+  nextcloud:
+    options:
+      REVERSE_PROXY_WS: true
+      MAX_CLIENT_SIZE: 15G
+      REFERRER_POLICY: no-referrer
+      ALLOWED_METHODS: "GET|POST|HEAD|COPY|DELETE|LOCK|MKCOL|MOVE|PROPFIND|PROPPATCH|PUT|UNLOCK|OPTIONS|REPORT|SEARCH"
+      BAD_BEHAVIOR_STATUS_CODES: "400 401 403 405 444"
+      BAD_BEHAVIOR_THRESHOLD: 25
+      MODSECURITY_CRS_PLUGINS: nextcloud-rule-exclusions
+    limit_req_urls:
+      - {url: /apps, rate: 5r/s}
+      - {url: /apps/text/session/sync, rate: 8r/s}
+      - {url: /core/preview, rate: 5r/s}
+      - {url: /remote.php/, rate: 8r/s}
+      - {url: /push/ws, rate: 8r/s}
+      - {url: /apps/memories/api/, rate: 8r/s}
+  ntfy:
+    options:
+      REVERSE_PROXY_WS: true
+      ALLOWED_METHODS: "GET|POST|HEAD|PUT|OPTIONS"
+      USE_MODSECURITY: false
+      BAD_BEHAVIOR_STATUS_CODES: "400 403 405 444"

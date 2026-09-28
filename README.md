@@ -111,20 +111,27 @@ ansible-playbook site.yml -l <host>
 
 ## Configuration
 
+Every service takes the same kinds of variables:
+`home-server-template/README.md`, "Configuration interface". Each role's
+defaults are generic; this deployment's own settings, such as the geo
+allowlist and the phone region, are in `inventory/group_vars/homeserver.yml`.
 In the secrets repository, `group_vars/homeserver.yml` holds what every host
-shares, and `host_vars/<host>.yml` one host's credentials and overrides. The
-role defaults files are the full reference.
+shares, and `host_vars/<host>.yml` one host's credentials and overrides.
+`nextcloud_service_config` and `bunker_service_config` live in
+`inventory/group_vars/homeserver.yml`. A dict set in a second file replaces
+it instead of merging, so a host that overrides one repeats all its keys.
 
 | Variable | Required | Controls |
 |---|---|---|
-| `base_setup_services` | yes | The services, in `inventory/group_vars/homeserver.yml` |
-| `nextcloud_hostname` | yes | Nextcloud's public hostname |
-| `ntfy_hostname` | no | ntfy's public hostname; empty means no ntfy site |
+| `base_setup_services` | yes | The services with their uid and port, in `inventory/group_vars/homeserver.yml` |
+| `bunker_service_sites` | yes | The proxy site of each public service, in `inventory/group_vars/homeserver.yml` |
+| `nextcloud_service_hostname` | yes | Nextcloud's public hostname |
+| `ntfy_service_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
 | Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration" |
 | ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
-| `bunker_service_generate_self_signed_ssl`, `bunker_service_auto_lets_encrypt` | without public DNS | Self-signed certificate instead of Let's Encrypt |
+| `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
@@ -141,19 +148,20 @@ that target.
 
 1. Copy `home-server-template` as its `README.md` says, and add the new
    repository: `git submodule add <its URL> services/<name>`.
-2. Add `name` and `uid` to `base_setup_services` in
-   `inventory/group_vars/homeserver.yml`. The `uid` never changes after the
-   first deploy, because it sets the subuid range that owns the service's files.
-3. For a public service, add a `<name>_site` to `bunker_service_sites`, a DNS
-   record and a probe URL. Then deploy.
+2. Add `name`, `uid` and, for a pod that the proxy or another pod reaches,
+   `port` to `base_setup_services` in `inventory/group_vars/homeserver.yml`.
+   The `uid` never changes after the first deploy, because it sets the subuid
+   range that owns the service's files.
+3. For a public service, set `<name>_service_hostname`, add an entry for
+   `<name>` to `bunker_service_sites`, a DNS record and a probe URL. Then
+   deploy.
 
-A service publishes on a loopback port that no other service uses:
+The ports in use:
 
 | Address | Service |
 |---|---|
 | `:80`, `:443` on every address | bunker |
-| `127.0.0.1:8080` | Nextcloud |
-| `127.0.0.1:8081` | ntfy |
+| `127.0.0.1:<port>` | a service with a `port` in `base_setup_services` |
 | `127.0.0.2:3000`, `127.0.0.2:9090` | Grafana, Prometheus |
 
 ## Design decisions
