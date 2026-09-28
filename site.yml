@@ -30,6 +30,7 @@
         service_name: "{{ svc.name }}"
         service_home: "{{ base_setup_services_dir }}/{{ svc.name }}"
         service_repo: "{{ svc.dir }}"
+        service_port: "{{ svc.port | default(none) }}"
       loop: "{{ base_setup_services }}"
       loop_control:
         loop_var: svc

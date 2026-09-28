@@ -1,4 +1,17 @@
 ---
+# Two services on one uid share a subuid range, two on one port cannot start.
+- name: Assert every service has its own name, uid and port
+  ansible.builtin.assert:
+    that:
+      - base_setup_services | map(attribute='name') | unique | length == base_setup_services | length
+      - base_setup_services | map(attribute='uid') | unique | length == base_setup_services | length
+      - base_setup_service_ports | unique | length == base_setup_service_ports | length
+    fail_msg: >-
+      Give every entry of base_setup_services its own name, uid and port.
+      README.md, "Adding a service".
+    quiet: true
+  vars:
+    base_setup_service_ports: "{{ base_setup_services | selectattr('port', 'defined') | map(attribute='port') | list }}"
 
 - name: Name the host after its inventory entry
   ansible.builtin.hostname:
