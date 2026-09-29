@@ -26,13 +26,26 @@
     owner: root
     mode: "0600"
     validate: sshd -t -f %s
-  register: secureblue_sshd_dropin
+  register: secureblue_sshd_forwarding
+
+# securecore sets TCPKeepAlive no and leaves ClientAliveInterval at 0, so sshd
+# never drops a dead client, and its logind session blocks the staged reboot.
+# With securecore's ClientAliveCountMax 2, a dead client goes after 10-15 minutes.
+- name: Drop dead SSH clients
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/90-client-alive.conf
+    content: |
+      ClientAliveInterval 300
+    owner: root
+    mode: "0600"
+    validate: sshd -t -f %s
+  register: secureblue_sshd_client_alive
 
 - name: Reload sshd
   ansible.builtin.systemd_service:
     name: sshd.service
     state: reloaded
-  when: secureblue_sshd_dropin is changed
+  when: secureblue_sshd_forwarding is changed or secureblue_sshd_client_alive is changed
 
 # The secureblue MOTD runs in every shell sshd starts, including each Ansible
 # round trip. This file is its opt-out.
