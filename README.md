@@ -202,7 +202,8 @@ Covered:
 
 - SSH accepts only the hardware-backed key, and no root login. The admin user
   may forward local ports only, because Grafana is reachable only through a
-  tunnel.
+  tunnel. sshd drops a dead client after 10 to 15 minutes, so a broken
+  connection does not block the staged reboot.
 - Every container drops all capabilities and sets `no-new-privileges` and a
   pids limit.
 - `policy.json` rejects every image that no service role declares
