@@ -80,9 +80,10 @@ run_user() {
 # The snapshot and backup checks start units whose OnSuccess= chain ends in
 # auto-reboot-staged.service. A runtime drop-in with a condition that never
 # holds makes systemd skip it; a mask would lose to the unit in /etc.
+# From here on a release runs at exit: it is harmless when nothing was held.
+HELD=1
 run_root "systemctl stop functional-test-release.service 2>/dev/null; mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload && echo held" |
   grep -q held || { echo "ERROR: cannot hold the staged reboot" >&2; exit 1; }
-HELD=1
 
 # As core, with `lq <path> [curl args]` querying Loki through Grafana's
 # datasource proxy. The admin credential travels on ssh stdin.
