@@ -68,8 +68,9 @@ Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
 
 The deploy and the functional test escalate with `run0`, which needs the root
 gate open: `ssh -t core@<address> root-gate on` asks for core's password once.
-The gate closes after 2 h; `--timer <time>` sets another time, `--no-timer`
-keeps it open until the next boot, and `root-gate off` closes it at once.
+The gate closes after 2 h. `--timer <time>` sets another time, and
+`--no-timer` keeps it open until the next boot. `root-gate off` closes it at
+once.
 
 ### Test VM
 
@@ -80,7 +81,8 @@ and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 
 ```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
-ansible-playbook site.yml -l test && ./functional_test.sh test       # terminal 2, after the rebase
+ssh -t -p 2222 -i test/coreos_key core@127.0.0.1 root-gate on        # terminal 2, after the rebase
+ansible-playbook site.yml -l test && ./functional_test.sh test
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
@@ -110,6 +112,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
 ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
+ssh -t core@<address> root-gate on
 ansible-playbook site.yml -l <host>
 ./functional_test.sh <host>
 ```
