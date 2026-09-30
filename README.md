@@ -170,6 +170,21 @@ Nextcloud snapshot holds a database dump from just before it.
   newest snapshot of every service to a restic repository. restic encrypts,
   deduplicates and sends only the changes.
 
+A new target needs `base_setup_luks_passphrase` and a deploy first, so the key
+file exists. Then format the USB disk or the iSCSI LUN by hand:
+
+```bash
+D=/dev/disk/by-id/<disk>        # or /dev/disk/by-path/<LUN>
+run0 cryptsetup luksFormat --type luks2 "$D" /etc/luks/backup.key
+run0 cryptsetup open --key-file /etc/luks/backup.key "$D" tmp
+run0 sh -c 'mkfs.btrfs -L backup /dev/mapper/tmp && cryptsetup close tmp'
+run0 blkid -s UUID -o value "$D"    # the uuid of the target
+```
+
+Add the `uuid` and a `name` to `base_setup_backup_targets` and deploy again.
+Read a file back from `/var/backup/<name>/<service>/<date>` after the first
+backup, before you trust the target.
+
 Once a month `btrfs-scrub@<path>.timer` scrubs the host (through `/var`, as
 `/sysroot` is read-only) and each target. A scrub reads every block and
 checks it against its checksum. An error it cannot repair fails the unit, and
