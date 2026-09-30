@@ -130,7 +130,7 @@
                                                   'keyPath': '/etc/pki/containers/marpogaus-cosign.pub',
                                                   'signedIdentity': {'type': 'matchRepository'}}]}) }}
 
-- name: Deploy the snapshot, backup and auto-reboot units
+- name: Deploy the snapshot, backup, scrub and auto-reboot units
   ansible.builtin.template:
     src: "{{ item }}.j2"
     dest: /etc/systemd/system/{{ item }}
