@@ -1,14 +1,13 @@
 #!/bin/bash
 # Make a snapshot the live subvolume of a service: btrfs-restore.sh
 # /var/services/<name> <snapshot>. The snapshot is a dated copy under
-# /var/services/snapshots/<name>/ or on a backup target. The live subvolume
-# moves aside, not away. Start the service again with a deploy.
+# /var/services/snapshots/<name>/, one on a backup target, or a subvolume that
+# restic restored into. The live subvolume moves aside, not away. Start the
+# service again with a deploy.
 set -euo pipefail
 
-LIVE="${1:?live subvolume not given, e.g. /var/services/nextcloud}"
-SNAP="${2:?snapshot not given, e.g. /var/backup/nas/nextcloud/2026-09-29}"
-LIVE="${LIVE%/}"
-SNAP="${SNAP%/}"
+LIVE="$(realpath -m "${1:?live subvolume not given, e.g. /var/services/nextcloud}")"
+SNAP="$(realpath -e "${2:?snapshot not given, e.g. /var/backup/nas/nextcloud/2026-09-29}")"
 SVC="$(basename "${LIVE}")"
 LOCAL="$(dirname "${LIVE}")/snapshots/${SVC}"
 
@@ -54,8 +53,8 @@ if [ -n "${ASIDE}" ]; then
 	while IFS= read -r nested; do
 		rel="${nested#"${ASIDE}"/}"
 		parent="$(dirname "${LIVE}/${rel}")"
-		if [ "$(realpath -m "${parent}")" != "${parent}" ]; then
-			echo "WARNING: ${parent} is a symlink; ${rel} stays in ${ASIDE}" >&2
+		if [ "$(realpath -m "${parent}")" != "${parent}" ] || [ -L "${LIVE}/${rel}" ]; then
+			echo "WARNING: ${rel} runs through a symlink; it stays in ${ASIDE}" >&2
 			continue
 		fi
 		if [ -d "${LIVE}/${rel}" ]; then
