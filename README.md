@@ -172,7 +172,9 @@ Nextcloud snapshot holds a database dump from just before it.
   deduplicates and sends only the changes.
 
 A new target needs `base_setup_luks_passphrase` and a deploy first, so the key
-file exists. Then format the USB disk or the iSCSI LUN by hand:
+file exists. A LUN also needs `base_setup_iscsi_portal` and
+`base_setup_iscsi_target` in that deploy. Then, on the host, format the USB
+disk or the LUN by hand:
 
 ```bash
 D=/dev/disk/by-id/<disk>        # or /dev/disk/by-path/<LUN>
@@ -324,7 +326,7 @@ Covered:
   back, and sets `no-new-privileges` and a pids limit.
 - `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract"), except the signed ones
-  that SecureBlue's own policy admits.
+  that the OS image's own `policy.json` admits.
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
   Only the inventory entry `test` skips the check.
 - Credentials in the secrets repository are Vault-encrypted. Keep a copy of
