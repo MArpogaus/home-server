@@ -319,10 +319,11 @@ Covered:
   may forward local ports only, because Grafana is reachable only through a
   tunnel. sshd drops a dead client after 10 to 15 minutes, so a broken
   connection does not block the staged reboot.
-- Every service container drops all capabilities and sets `no-new-privileges`
-  and a pids limit.
+- Every service container drops all capabilities except those its Quadlet adds
+  back, and sets `no-new-privileges` and a pids limit.
 - `policy.json` rejects every image that no role declares
-  (`home-server-template/README.md`, "Role contract").
+  (`home-server-template/README.md`, "Role contract"), except the signed ones
+  that SecureBlue's own policy admits.
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
   Only the inventory entry `test` skips the check.
 - Credentials in the secrets repository are Vault-encrypted. Keep a copy of
@@ -348,6 +349,8 @@ Known gaps:
   monitoring service reads tokens that other units log.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
+- pasta filters no outgoing traffic, so every container reaches the LAN from
+  this host's address, the NAS included.
 
 SELinux exceptions:
 
