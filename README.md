@@ -128,7 +128,7 @@ shares, and `host_vars/<host>.yml` one host's credentials and overrides.
 | ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
-| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
+| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
