@@ -39,9 +39,12 @@ fi
 
 btrfs subvolume snapshot "${SNAP}" "${LIVE}"
 
-# A snapshot holds no nested subvolume, so each one comes over from the old
-# live subvolume. Inode 256 is the root of a Btrfs subvolume.
+# A restic restore leaves its target directory to root, so the owner and
+# mode come from the old live subvolume. So does each nested subvolume, which
+# no snapshot holds. Inode 256 is the root of a Btrfs subvolume.
 if [ -n "${ASIDE}" ]; then
+	chown --reference="${ASIDE}" "${LIVE}"
+	chmod --reference="${ASIDE}" "${LIVE}"
 	while IFS= read -r nested; do
 		rel="${nested#"${ASIDE}"/}"
 		if [ -d "${LIVE}/${rel}" ]; then
