@@ -78,6 +78,8 @@
       ansible.builtin.shell:
         cmd: |
           set -eu
+          # cp takes the modes from the umask; the host needs 0644 and 0755.
+          umask 022
           stage={{ quadlet_service_stage.path | quote }}
           cp -r {{ (role_path ~ '/files/container.d') | quote }} "$stage/"
           cp -r {{ (service_repo ~ '/quadlets/.') | quote }} "$stage/"
