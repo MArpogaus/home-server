@@ -1,8 +1,6 @@
 #!/bin/sh
-# root-gate on [--timer <time> | --no-timer] | off
-# While /run/polkit/root-gate exists, core runs run0 without a password. "on" asks for
-# core's password once and closes the gate after the time (default 2h), or at
-# the next boot with --no-timer.
+# While /run/polkit/root-gate exists, the polkit rule lets core run run0
+# without a password. README.md, "Deploy", has the usage.
 set -eu
 
 case "${1:-} ${2:-}" in

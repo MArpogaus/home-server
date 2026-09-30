@@ -34,8 +34,8 @@ storage:
       mode: 0644
       contents:
         inline: |
-          # Keys only. The console password exists for local recovery; it must
-          # not be usable over the network.
+          # Keys only: sshd never accepts core's password; only the console
+          # and polkit ask for it.
           PasswordAuthentication no
           KbdInteractiveAuthentication no
           PermitRootLogin no
