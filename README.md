@@ -304,6 +304,9 @@ Known gaps:
   `ghcr.io/marpogaus` pull without a signature.
 - The test VM is root for anyone with `test/coreos_key`, which has no
   passphrase. `test/start_vm.py` creates it when it is missing.
+- `btrfs-restore.sh` stops only the service's pod. A compromised service user
+  whose own units keep running can swap a directory for a symlink while the
+  script moves a nested subvolume.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 
