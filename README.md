@@ -100,7 +100,9 @@ needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
 host uses the agent. `build.sh` authorises the smartcard key in the agent and
 asks `mkpasswd` for core's password, which the console and `root-gate` use.
-`SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead.
+`SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
+host key fingerprints; compare them with `ssh-keyscan -l <address>` before the
+key goes into `known_hosts`.
 
 ```bash
 cd ignition
