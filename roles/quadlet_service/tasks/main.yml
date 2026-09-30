@@ -91,9 +91,6 @@
           {% endfor %}
           {% for f in quadlet_service_extra_files %}
           mkdir -p "$(dirname "$stage"/{{ f.dest | quote }})"
-          {% if f.src is defined %}
-          cp -r {{ f.src | quote }} "$stage"/{{ f.dest | quote }}
-          {% endif %}
           {% endfor %}
       delegate_to: localhost
       become: false
@@ -105,7 +102,7 @@
         dest: "{{ quadlet_service_stage.path }}/{{ item.dest }}"
         mode: "0644"
       diff: false
-      loop: "{{ quadlet_service_extra_files | selectattr('content', 'defined') | list }}"
+      loop: "{{ quadlet_service_extra_files }}"
       loop_control:
         label: "{{ item.dest }}"
       delegate_to: localhost
