@@ -165,9 +165,11 @@ repository.
 
 Prune from another machine, with backend credentials that may delete: `restic
 forget --keep-daily 30 --keep-monthly 12 --prune`. A compromised host can add
-snapshots with a false time, which push the good ones out of these rules.
-Read `restic snapshots` before each prune, and after a compromise keep the
-good snapshots by ID.
+snapshots with a false time, which push the good ones out of these rules. A
+snapshot names its own time, so trust the time its file arrived on the server
+(`ls -l --time-style=full-iso <repository>/snapshots/` there). Run `restic
+check` and read `restic snapshots` before each prune, and after a compromise
+keep the good snapshots by ID.
 
 `/usr/local/bin/restic` runs restic on the host with the host's repository,
 for example `run0 restic snapshots`. It mounts `/var/services` read-only.
@@ -175,8 +177,8 @@ for example `run0 restic snapshots`. It mounts `/var/services` read-only.
 ### Restore a service
 
 `btrfs-restore.sh` stops the service's pod and moves its live subvolume to
-`snapshots/<service>/before-restore-<time>`. A snapshot from a target is
-first received into `snapshots/<service>/`. The script then makes a writable
+`snapshots/<service>/before-restore-<time>`. For a snapshot from a target,
+the script first receives it into `snapshots/<service>/`. The script then makes a writable
 copy of the snapshot and uses it as the live subvolume. Nested subvolumes,
 such as Nextcloud's `data/custom_apps`, come over from the old state. The
 deploy starts the service again.
@@ -189,8 +191,8 @@ ansible-playbook site.yml -l <host>
 
 The first line restores from a local snapshot, the second from a backup
 target. From restic, restore into a new subvolume first. Pick the snapshot by
-its ID from `restic snapshots`, not `latest`: after a compromise the newest
-snapshot can be forged, and on a new host it can be the new host's empty one.
+its ID from `restic snapshots`, not `latest`. After a compromise, the newest
+snapshot can be a forgery. On a new host, it can be the new host's empty one.
 
 ```bash
 run0 restic snapshots
@@ -198,13 +200,15 @@ S=/var/services/snapshots/nextcloud/restic-2026-09-29
 run0 mkdir -p $(dirname $S)
 run0 btrfs subvolume create $S
 run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud --target $S
-run0 find $S -xdev -perm /6000 -not -path '*/.local/share/containers/*' -ls
+run0 find $S -xdev -perm /6000 \( -uid 0 -o -gid 0 -o -not -path '*/.local/share/containers/*' \) -ls
 run0 btrfs-restore.sh /var/services/nextcloud $S
 ansible-playbook site.yml -l <host>
 ```
 
-The `find` lists setuid and setgid files outside Podman's image layers, which
-carry their own. Such a file in a restored home is suspect. Delete the
+The `find` lists the setuid and setgid files that a rootless service does not
+bring: those outside Podman's image layers, and those owned by root, which no
+rootless image layer holds. Such a file is suspect. Run the same `find` on a
+snapshot from a target before you restore it. Delete the
 `before-restore-*` copy, and a received or restic copy, when the service works
 again.
 
@@ -257,7 +261,9 @@ The ports in use:
   `LogDriver=passthrough` the unit's priority applies. Each service sets it in
   its own `container.d/`; bunker cannot and keeps journald.
 - **Updates are unattended.** Digest pinning and auto-update exclude each
-  other, and this project chose auto-update. The reboot uses
+  other, and this project chose auto-update. The restic image is the
+  exception: it runs as root, so it is pinned by digest, and Renovate updates
+  it. The reboot uses
   `--check-inhibitors=yes`, so it never interrupts a backup or a dump.
 - **The secrets repository is a second inventory.** `ansible.cfg` lists it
   after this one, so its `group_vars/` and `host_vars/` win over this
