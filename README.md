@@ -31,7 +31,7 @@ git clone <the private secrets repo> home-server-secrets
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
-  `uid * base_setup_subuid_range_size + 100000`. `site.yml` then runs the
+  `uid * 65536 + 100000`. `site.yml` then runs the
   service role from `services/<name>/ansible-role`, which calls
   `quadlet_service`. Services reach each other through host-published ports.
 - **Snapshots and backup targets.** The finished snapshot of a service starts
