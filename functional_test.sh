@@ -28,11 +28,17 @@ NTFY_PORT=${V[9]}
 
 CTL_DIR=$(mktemp -d)
 HOLD=/run/systemd/system/auto-reboot-staged.service.d/functional-test.conf
+# The host waits for the backups that the test started, so a lost connection
+# does not keep the hold.
+RELEASE="while [ -n \"\$(systemctl list-jobs --no-legend 'btrfs-backup@*')\" ]; do sleep 10; done
+rm -rf ${HOLD%/*}
+systemctl daemon-reload"
 release_hold() {
-  # shellcheck disable=SC2016 # expands on the host
-  run_root 'while [ -n "$(systemctl list-units --state=activating,active --no-legend "btrfs-backup@*")" ]; do sleep 10; done; '"rm -rf ${HOLD%/*}; systemctl daemon-reload"
+  run_root "systemd-run --quiet --collect --unit=functional-test-release sh -c \"\$(echo $(b64 "${RELEASE}") | base64 -d)\" && echo released" |
+    grep -q released ||
+    echo "WARNING: the staged reboot is still held; on the host run: run0 rm -r ${HOLD%/*} && run0 systemctl daemon-reload" >&2
 }
-trap 'release_hold >/dev/null; rm -rf "${CTL_DIR}"' EXIT
+trap 'release_hold; rm -rf "${CTL_DIR}"' EXIT
 SSH=(ssh -p "${TARGET_PORT}" "${SSH_OPTS[@]}" -o LogLevel=ERROR
      -o ControlMaster=auto -o ControlPersist=60s -o ControlPath="${CTL_DIR}/%C"
      "core@${TARGET_HOST}")
@@ -69,9 +75,9 @@ run_user() {
 
 # The snapshot and backup checks start units whose OnSuccess= chain ends in
 # auto-reboot-staged.service. A runtime drop-in with a condition that never
-# holds makes systemd skip it; a mask would lose to the unit in /etc. The exit
-# trap keeps it until the backups that the snapshot started are done.
-run_root "mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload" >/dev/null
+# holds makes systemd skip it; a mask would lose to the unit in /etc.
+run_root "mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload && echo held" |
+  grep -q held || { echo "ERROR: cannot hold the staged reboot" >&2; exit 1; }
 
 # As core, with `lq <path> [curl args]` querying Loki through Grafana's
 # datasource proxy. The admin credential travels on ssh stdin.
