@@ -20,6 +20,21 @@
     permissive: true
   when: base_setup_iscsi_portal | default('') | length > 0
 
+# SecureBlue runs firewalld; stock Fedora CoreOS has none.
+- name: Ensure firewalld is running
+  ansible.builtin.systemd_service:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Open the firewall services
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  loop: [ssh, http, https]
+
 # securecore sets AllowTcpForwarding no. Grafana is reachable through a tunnel
 # alone, so the admin user gets `local` back and nothing else.
 - name: Allow local port forwarding for the admin user

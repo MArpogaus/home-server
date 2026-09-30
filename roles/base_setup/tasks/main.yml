@@ -242,20 +242,6 @@
   loop_control:
     label: "{{ item.name }}"
 
-- name: Ensure firewalld is running
-  ansible.builtin.systemd_service:
-    name: firewalld
-    state: started
-    enabled: true
-
-- name: Open the firewall services
-  ansible.posix.firewalld:
-    service: "{{ item }}"
-    state: enabled
-    permanent: true
-    immediate: true
-  loop: [ssh, http, https]
-
 - name: Let unprivileged users bind ports >= 80
   ansible.posix.sysctl:
     name: net.ipv4.ip_unprivileged_port_start
