@@ -123,15 +123,13 @@ def build_ignition(platform):
     with open(SSH_KEY + ".pub") as handle:
         env["SSH_PUBLIC_KEY"] = handle.read().strip()
 
-    # Serial console only, so it is optional. Without mkpasswd, boot key-only.
-    if shutil.which("mkpasswd"):
-        password = os.environ.get("VM_PASSWORD", "test")
-        env["PASSWORD_HASH"] = subprocess.run(
-            ["mkpasswd", "--method=yescrypt", "--stdin"], input=password,
-            check=True, capture_output=True, text=True).stdout.strip()
-    else:
-        print("mkpasswd not found; no console password, SSH key only")
-        env["PASSWORD_HASH"] = "none"
+    # root-gate on the VM asks for it.
+    if not shutil.which("mkpasswd"):
+        fail("mkpasswd not found; the VM needs a password for root-gate")
+    password = os.environ.get("VM_PASSWORD", "test")
+    env["PASSWORD_HASH"] = subprocess.run(
+        ["mkpasswd", "--method=yescrypt", "--stdin"], input=password,
+        check=True, capture_output=True, text=True).stdout.strip()
 
     platform_args = ["--platform", platform] if platform else []
     result = subprocess.run([BUILD_SH, *platform_args, "ign"], env=env,

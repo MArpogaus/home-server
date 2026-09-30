@@ -1,0 +1,26 @@
+#!/bin/sh
+# While /run/polkit/root-gate exists, the polkit rule lets core run run0
+# without a password. README.md, "Deploy", has the usage.
+set -eu
+gate=/run/polkit/root-gate
+
+case "${1:-} ${2:-}" in
+"on ") timer=2h ;;
+"on --timer") timer="${3:?time missing, such as 30min}" ;;
+"on --no-timer") timer="" ;;
+"off ")
+	[ -e "${gate}" ] || exit 0
+	run0 systemctl stop root-gate-close.timer 2>/dev/null || true
+	exec run0 rm -f "${gate}"
+	;;
+*)
+	echo "usage: root-gate on [--timer <time> | --no-timer] | off" >&2
+	exit 2
+	;;
+esac
+
+[ -z "${timer}" ] || systemd-analyze timespan "${timer}" >/dev/null
+# Only this first run0 asks for the password; the gate is open after it.
+run0 touch "${gate}"
+run0 systemctl stop root-gate-close.timer 2>/dev/null || true
+[ -z "${timer}" ] || run0 systemd-run --quiet --collect --unit=root-gate-close --on-active="${timer}" rm -f "${gate}"
