@@ -92,7 +92,9 @@ needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
 `secrets.example/host_vars/test.yml` to
 `../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
-host uses the agent.
+host uses the agent. `build.sh` authorises the smartcard key in the agent and
+asks `mkpasswd` for a console password. `SSH_PUBLIC_KEY` and `PASSWORD_HASH`
+set them instead.
 
 ```bash
 cd ignition
