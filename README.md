@@ -35,12 +35,11 @@ git clone <the private secrets repo> home-server-secrets
   `uid * base_setup_subuid_range_size + 100000`. `site.yml` then runs the
   service role from `services/<name>/ansible-role`, which calls
   `quadlet_service`. Services reach each other through host-published ports.
-- **Snapshots and backup targets.** `btrfs-snapshot@<service>.timer` takes a
-  read-only snapshot each night. The finished snapshot starts
-  `btrfs-backup@<target>.service`, an incremental `btrfs send` to each target.
-  A target is a LUKS2 container with Btrfs (USB disk or iSCSI LUN), found by
-  UUID, opened with `nofail` and automounted at `/var/backup/<name>`. A nested
-  subvolume is not in a snapshot.
+- **Snapshots and backup targets.** The finished snapshot of a service starts
+  `btrfs-backup@<target>.service`. A target is a LUKS2 container with Btrfs
+  (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
+  at `/var/backup/<name>`. A nested subvolume is not in a snapshot. "Backup and
+  restore" has the whole flow.
 - **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
   rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots
   after the last backup, or at 03:00.
@@ -159,20 +158,28 @@ Nextcloud snapshot holds a database dump from just before it.
   deduplicates and sends only the changes.
 
 The restic repository survives a compromised host only if its server is
-append-only: the host's key adds snapshots but removes none. `rest-server
---append-only` does this, and so do hosted services with an append-only mode.
-Remove old snapshots from another machine, with a key that may delete:
-`restic forget --keep-daily 30 --keep-monthly 12 --prune`.
+append-only: the backend credentials in `base_setup_restic_env` add data but
+delete none. `rest-server --append-only` does this, and so do hosted services
+with an append-only mode. The restic password alone does not protect the
+repository.
+
+Prune from another machine, with backend credentials that may delete: `restic
+forget --keep-daily 30 --keep-monthly 12 --prune`. A compromised host can add
+snapshots with a false time, which push the good ones out of these rules.
+Read `restic snapshots` before each prune, and after a compromise keep the
+good snapshots by ID.
+
 `/usr/local/bin/restic` runs restic on the host with the host's repository,
-for example `run0 restic snapshots`.
+for example `run0 restic snapshots`. It mounts `/var/services` read-only.
 
 ### Restore a service
 
 `btrfs-restore.sh` stops the service's pod and moves its live subvolume to
-`snapshots/<service>/before-restore-<time>`. It then makes a writable copy
-of the snapshot the live subvolume. Nested subvolumes, such as Nextcloud's
-`data/custom_apps`, come over from the old state. The deploy starts the
-service again.
+`snapshots/<service>/before-restore-<time>`. A snapshot from a target is
+first received into `snapshots/<service>/`. The script then makes a writable
+copy of the snapshot and uses it as the live subvolume. Nested subvolumes,
+such as Nextcloud's `data/custom_apps`, come over from the old state. The
+deploy starts the service again.
 
 ```bash
 run0 btrfs-restore.sh /var/services/nextcloud /var/services/snapshots/nextcloud/2026-09-29
@@ -181,22 +188,31 @@ ansible-playbook site.yml -l <host>
 ```
 
 The first line restores from a local snapshot, the second from a backup
-target. From restic, restore into a new subvolume first:
+target. From restic, restore into a new subvolume first. Pick the snapshot by
+its ID from `restic snapshots`, not `latest`: after a compromise the newest
+snapshot can be forged, and on a new host it can be the new host's empty one.
 
 ```bash
+run0 restic snapshots
 S=/var/services/snapshots/nextcloud/restic-2026-09-29
+run0 mkdir -p $(dirname $S)
 run0 btrfs subvolume create $S
-run0 restic restore latest:/data/nextcloud --target $S
+run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud --target $S
+run0 find $S -xdev -perm /6000 -not -path '*/.local/share/containers/*' -ls
 run0 btrfs-restore.sh /var/services/nextcloud $S
 ansible-playbook site.yml -l <host>
 ```
 
-Delete the `before-restore-*` copy when the service works again.
+The `find` lists setuid and setgid files outside Podman's image layers, which
+carry their own. Such a file in a restored home is suspect. Delete the
+`before-restore-*` copy, and a received or restic copy, when the service works
+again.
 
 On a new host, deploy first, so the users, their uids and the subvolumes
 exist. Then restore each service and deploy again. A nested subvolume is in
 no backup: install the Nextcloud apps of `custom_apps` again with `occ
-app:install`.
+app:install`, and download the Recognize models with `occ
+recognize:download-models`.
 
 ## Adding a service
 
@@ -260,7 +276,7 @@ Covered:
   connection does not block the staged reboot.
 - Every container drops all capabilities and sets `no-new-privileges` and a
   pids limit.
-- `policy.json` rejects every image that no service role declares
+- `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract").
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
   Only the inventory entry `test` skips the check.
@@ -287,6 +303,8 @@ SELinux exceptions:
   SecureBlue's `harden_container_userns` blocks rootless Podman.
 - iscsid needs a permissive `iscsid_t`, which the host task file sets. A
   constraint, not an allow rule, stops its netlink socket.
+- `/usr/local/bin/restic` runs its root container with `label=disable`, so it
+  can read the files of every service.
 
 ## Alerts
 
