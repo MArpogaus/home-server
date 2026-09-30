@@ -148,11 +148,16 @@
         get_checksum: true
         checksum_algorithm: sha1
       register: quadlet_service_unpacked
+      become: true
+      become_user: "{{ service_name }}"
 
     # The directory holds exactly the archive, so a file that left the repo
-    # leaves the host.
+    # leaves the host. The service user owns the home, so it does the work: a
+    # symlink it put there reaches only what it may write anyway.
     - name: Replace the Quadlet directory when the archive changed
       when: quadlet_service_files_changed
+      become: true
+      become_user: "{{ service_name }}"
       block:
         # A run that fails from here on leaves no record, so the next deploy
         # replaces the directory again.
@@ -170,16 +175,14 @@
           ansible.builtin.file:
             path: "{{ quadlet_service_dir }}"
             state: directory
-            owner: "{{ service_name }}"
-            group: "{{ service_name }}"
             mode: "0755"
 
+        # As a user, tar applies the umask; the modes of the stage stay.
         - name: Unpack the Quadlets, drop-ins and configs
           ansible.builtin.unarchive:
             src: "{{ quadlet_service_stage.path }}.tgz"
             dest: "{{ quadlet_service_dir }}/"
-            owner: "{{ service_name }}"
-            group: "{{ service_name }}"
+            extra_opts: [--preserve-permissions]
           register: quadlet_service_unpack
 
     - name: Start the pod, or restart it when its files changed
@@ -197,10 +200,10 @@
       ansible.builtin.copy:
         src: "{{ quadlet_service_stage.path }}.tgz"
         dest: "{{ quadlet_service_dir }}.tgz"
-        owner: "{{ service_name }}"
-        group: "{{ service_name }}"
         mode: "0600"
       when: quadlet_service_files_changed
+      become: true
+      become_user: "{{ service_name }}"
   always:
     - name: Remove the stage
       ansible.builtin.file:
