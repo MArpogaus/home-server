@@ -28,7 +28,11 @@ NTFY_PORT=${V[9]}
 
 CTL_DIR=$(mktemp -d)
 HOLD=/run/systemd/system/auto-reboot-staged.service.d/functional-test.conf
-trap 'run_root "rm -rf ${HOLD%/*}; systemctl daemon-reload" >/dev/null; rm -rf "${CTL_DIR}"' EXIT
+release_hold() {
+  # shellcheck disable=SC2016 # expands on the host
+  run_root 'while [ -n "$(systemctl list-units --state=activating,active --no-legend "btrfs-backup@*")" ]; do sleep 10; done; '"rm -rf ${HOLD%/*}; systemctl daemon-reload"
+}
+trap 'release_hold >/dev/null; rm -rf "${CTL_DIR}"' EXIT
 SSH=(ssh -p "${TARGET_PORT}" "${SSH_OPTS[@]}" -o LogLevel=ERROR
      -o ControlMaster=auto -o ControlPersist=60s -o ControlPath="${CTL_DIR}/%C"
      "core@${TARGET_HOST}")
@@ -65,7 +69,8 @@ run_user() {
 
 # The snapshot and backup checks start units whose OnSuccess= chain ends in
 # auto-reboot-staged.service. A runtime drop-in with a condition that never
-# holds makes systemd skip it; a mask would lose to the unit in /etc.
+# holds makes systemd skip it; a mask would lose to the unit in /etc. The exit
+# trap keeps it until the backups that the snapshot started are done.
 run_root "mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload" >/dev/null
 
 # As core, with `lq <path> [curl args]` querying Loki through Grafana's
