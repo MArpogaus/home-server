@@ -62,7 +62,6 @@ mkdir -p -m 700 ~/.config/home-server
 
 S=../home-server-secrets                   # a new secrets repository
 git init -q $S && cp -r secrets.example/. $S/ && mkdir -p $S/ssh
-printf 'group_vars/*.yml diff=ansible-vault\nhost_vars/*.yml diff=ansible-vault\n' > $S/.gitattributes
 # fill in the values, then:
 ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 ```
