@@ -39,7 +39,7 @@ service inside its submodule:
 
 ```bash
 git -C services/<name> switch dev          # a submodule checks out a commit
-# edit, then commit and push in services/<name> as in its own CONTRIBUTING.md
+# edit, then commit and push in services/<name> on dev
 git add services/<name>                    # move the pin here
 git commit -m "chore: pin home-server-<name> to <short sha>"
 ```
