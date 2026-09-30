@@ -1,11 +1,14 @@
 # Contributing
 
+These rules apply to this repository, to each service repository and to
+`home-server-template`.
+
 Work on `dev`. `main` takes a merge from `dev` with `--no-ff`.
 
 Write conventional commits. The commitizen hook rejects a message that does not
 follow the format.
 
-Install the hooks in this repository:
+Install the hooks in each repository:
 
 ```bash
 pre-commit install --install-hooks -t pre-commit -t commit-msg -t pre-push
@@ -15,7 +18,7 @@ Plain `pre-commit install` installs the pre-commit stage alone, and the commit
 message and branch hooks then do not run. CI runs the pre-commit stage hooks on
 a push and on a pull request to `main` or `dev`.
 
-Every GitHub action is pinned to a commit SHA. Dependabot updates the actions
+A commit SHA pins every GitHub action. Dependabot updates the actions
 and the hook revisions weekly against `dev`. `pinact run -u` updates and
 re-pins the actions by hand.
 
@@ -26,7 +29,8 @@ and `git push --follow-tags`. The `release` workflow turns every pushed tag into
 a GitHub release. GitHub writes its notes: the pull requests merged since the
 previous release and a link that compares the two tags.
 
-Tags are `vX.Y`, and a fix release adds `.Z`, such as `v1.0` and `v1.0.1`.
+Tags are `vX.Y`, and a fix release adds `.Z`, such as `v1.0` and `v1.0.1`. A
+repository with another scheme says so in its own `CONTRIBUTING.md`.
 
 ## Services and their pins
 
