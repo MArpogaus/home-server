@@ -53,7 +53,7 @@ secrets repository's inventory after it, and the Vault password file.
 `secrets.example/` holds the templates for the secrets repository.
 
 ```bash
-uv tool install --reinstall ansible --with passlib --with bcrypt
+uv tool install --reinstall ansible --with-executables-from ansible-core --with passlib --with bcrypt
 ansible-galaxy collection install -r requirements.yml   # again after requirements.yml changes
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
@@ -67,9 +67,10 @@ ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
 
 The deploy and the functional test escalate with `run0`, which needs the root
-gate open: `ssh -t core@<address> root-gate on` asks for core's password once.
-The gate closes after 2 h; `--timer <time>` sets another time, `--no-timer`
-keeps it open until the next boot, and `root-gate off` closes it at once.
+gate open: `root-gate on` on the host asks for core's password once.
+The gate closes after 2 h. `--timer <time>` sets another time, and
+`--no-timer` keeps it open until the next boot. `root-gate off` closes it at
+once.
 
 ### Test VM
 
@@ -80,14 +81,16 @@ and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 
 ```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
-ansible-playbook site.yml -l test && ./functional_test.sh test       # terminal 2, after the rebase
+ssh -t -p 2222 -i test/coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  core@127.0.0.1 root-gate on                                        # terminal 2, after the rebase
+ansible-playbook site.yml -l test && ./functional_test.sh test
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
 
 `--fresh` deletes the disk and its `base` snapshot. For a controller in a
-container, start the VM with `--listen <address>` and add
-`-e ansible_host=<address>` to both commands.
+container, start the VM with `--listen <address>`. Then use `<address>` in the
+`ssh` line and add `-e ansible_host=<address>` to the playbook and the test.
 
 ### Real host
 
@@ -98,7 +101,9 @@ needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
 host uses the agent. `build.sh` authorises the smartcard key in the agent and
 asks `mkpasswd` for core's password, which the console and `root-gate` use.
-`SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead.
+`SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
+host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
+-lf -` before the key goes into `known_hosts`.
 
 ```bash
 cd ignition
@@ -110,6 +115,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
 ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
+ssh -t -o UserKnownHostsFile=../home-server-secrets/ssh/known_hosts core@<address> root-gate on
 ansible-playbook site.yml -l <host>
 ./functional_test.sh <host>
 ```
@@ -138,6 +144,8 @@ one of them repeats all its entries.
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
+| `base_setup_btrfs_snapshot_retention_days` | no | Days a local snapshot stays; 30 |
+| `base_setup_backup_retention_days` | no | Days a snapshot stays on a target; 90 |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
@@ -162,6 +170,23 @@ Nextcloud snapshot holds a database dump from just before it.
 - With `base_setup_restic_repository` set, `restic-backup.timer` copies the
   newest snapshot of every service to a restic repository. restic encrypts,
   deduplicates and sends only the changes.
+
+A new target needs `base_setup_luks_passphrase` and a deploy first, so the key
+file exists. A LUN also needs `base_setup_iscsi_portal` and
+`base_setup_iscsi_target` in that deploy. Then, on the host, format the USB
+disk or the LUN by hand:
+
+```bash
+D=/dev/disk/by-id/<disk>        # or /dev/disk/by-path/<LUN>
+run0 cryptsetup luksFormat --type luks2 "$D" /etc/luks/backup.key
+run0 cryptsetup open --key-file /etc/luks/backup.key "$D" tmp
+run0 sh -c 'mkfs.btrfs -L backup /dev/mapper/tmp && cryptsetup close tmp'
+run0 blkid -s UUID -o value "$D"    # the uuid of the target
+```
+
+Add the `uuid` and a `name` to `base_setup_backup_targets` and deploy again.
+Read a file back from `/var/backup/<name>/<service>/<date>` after the first
+backup, before you trust the target.
 
 Once a month `btrfs-scrub@<path>.timer` scrubs the host (through `/var`, as
 `/sysroot` is read-only) and each target. A scrub reads every block and
@@ -239,6 +264,7 @@ recognize:download-models`.
    repository: `git submodule add <its URL> services/<name>`.
 2. Add `name`, `uid` and, for a pod that the proxy or another pod reaches,
    `port` to `base_setup_services` in `inventory/group_vars/homeserver.yml`.
+   `groups` adds host groups, such as `systemd-journal`.
    The `uid` never changes after the first deploy, because it sets the subuid
    range that owns the service's files.
 3. For a public service, set `<name>_service_hostname`, add an entry for
@@ -274,7 +300,8 @@ The ports in use:
 - **Container output goes through `passthrough` where it can.** conmon's
   journald driver files every stderr line as `err`. With
   `LogDriver=passthrough` the unit's priority applies. Each service sets it in
-  its own `container.d/`; bunker cannot and keeps journald.
+  its own `container.d/`. Bunker keeps journald:
+  `home-server-bunker/README.md`, "Specifics".
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The restic image is the
   exception: it runs as root, so a digest pins it, and Renovate updates it.
@@ -295,10 +322,11 @@ Covered:
   may forward local ports only, because Grafana is reachable only through a
   tunnel. sshd drops a dead client after 10 to 15 minutes, so a broken
   connection does not block the staged reboot.
-- Every service container drops all capabilities and sets `no-new-privileges`
-  and a pids limit.
+- Every service container drops all capabilities except those its Quadlet adds
+  back, and sets `no-new-privileges` and a pids limit.
 - `policy.json` rejects every image that no role declares
-  (`home-server-template/README.md`, "Role contract").
+  (`home-server-template/README.md`, "Role contract"), except the signed ones
+  that the OS image's own `policy.json` admits.
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
   Only the inventory entry `test` skips the check.
 - Credentials in the secrets repository are Vault-encrypted. Keep a copy of
@@ -324,6 +352,8 @@ Known gaps:
   monitoring service reads tokens that other units log.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
+- pasta filters no outgoing traffic, so every container reaches the LAN from
+  this host's address, the NAS included.
 
 SELinux exceptions:
 

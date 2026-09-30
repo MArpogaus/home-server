@@ -38,7 +38,8 @@ received_snapshots() {
 	done
 }
 
-# The target filesystem carries no label, and node-exporter statfs()es its root.
+# The target filesystem carries no SELinux label, and node-exporter statfs()es
+# its root.
 chcon -t container_file_t "${DEST}" || echo "WARNING: cannot label ${DEST}" >&2
 
 copied=0

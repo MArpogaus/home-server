@@ -32,7 +32,9 @@ nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
 #   - https://cloud.example.com/status.php
 #   - https://ntfy.example.com/v1/health
 
-# Real hardware only: the backup target.
+# Real hardware only: the backup target, formatted as README.md, "Backup and
+# restore", says.
+# base_setup_backup_targets: [{uuid: "", name: nas}]
 # base_setup_iscsi_portal: ""
 # base_setup_iscsi_target: ""
 # base_setup_luks_passphrase: ""

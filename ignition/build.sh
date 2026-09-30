@@ -67,7 +67,6 @@ config="$(<"${TEMPLATE}")"
 	config="${config//'${PASSWORD_HASH}'/"${PASSWORD_HASH}"}"
 }
 printf '%s\n' "${config}" > "${BUTANE_CONFIG}"
-rm -f "${SCRIPT_DIR}/platform.ign"
 if [ -n "${PLATFORM}" ]; then
 	"${BUTANE[@]}" --strict < "${PLATFORM}" > "${SCRIPT_DIR}/platform.ign"
 	printf 'ignition:\n  config:\n    merge:\n      - local: platform.ign\n' >> "${BUTANE_CONFIG}"

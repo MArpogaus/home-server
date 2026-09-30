@@ -1,7 +1,6 @@
 ---
 - name: Base setup and services
   hosts: all
-  gather_facts: true
   pre_tasks:
     - name: Refuse a run without -l
       ansible.builtin.assert:

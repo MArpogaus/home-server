@@ -7,24 +7,24 @@ VOLUME_NAME="$1"
 SOURCE="${BTRFS_SERVICES_DIR:?}/${VOLUME_NAME}"
 SNAPSHOT_DIR="${BTRFS_SNAPSHOT_DIR:?}/${VOLUME_NAME}"
 TEXTFILE_DIR="${NODE_TEXTFILE_DIR:?}"
-CUTOFF="$(date -d "-${BTRFS_SNAPSHOT_RETENTION_DAYS:?} days" +%Y-%m-%d)"
+CUTOFF="$(date -d "-${RETENTION_DAYS:?} days" +%Y-%m-%d)"
 
 mkdir -p "${SNAPSHOT_DIR}"
 
 TODAY="$(date +%Y-%m-%d)"
 if [ -d "${SNAPSHOT_DIR}/${TODAY}" ]; then
-    echo "Snapshot ${SNAPSHOT_DIR}/${TODAY} already exists, skipping."
+	echo "Snapshot ${SNAPSHOT_DIR}/${TODAY} already exists, skipping."
 else
-    btrfs subvolume snapshot -r "${SOURCE}" "${SNAPSHOT_DIR}/${TODAY}"
-    echo "Created snapshot: ${SNAPSHOT_DIR}/${TODAY}"
+	btrfs subvolume snapshot -r "${SOURCE}" "${SNAPSHOT_DIR}/${TODAY}"
+	echo "Created snapshot: ${SNAPSHOT_DIR}/${TODAY}"
 fi
 
 for snap in "${SNAPSHOT_DIR}"/????-??-??; do
-    [ -d "${snap}" ] || continue
-    if [[ "$(basename "${snap}")" < "${CUTOFF}" ]]; then
-        btrfs subvolume delete "${snap}" || rm -rf "${snap}"
-        echo "Deleted snapshot: ${snap}"
-    fi
+	[ -d "${snap}" ] || continue
+	if [[ "$(basename "${snap}")" < "${CUTOFF}" ]]; then
+		btrfs subvolume delete "${snap}" || rm -rf "${snap}"
+		echo "Deleted snapshot: ${snap}"
+	fi
 done
 
 tmp="${TEXTFILE_DIR}/snapshot-${VOLUME_NAME}.prom.$$"
