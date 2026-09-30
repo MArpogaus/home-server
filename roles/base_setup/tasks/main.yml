@@ -172,7 +172,8 @@
     mode: "0755"
     setype: container_ro_file_t
 
-# A job that never succeeds then reads as stale 30 h after the first deploy.
+# The deploy time stands in for the first success, so a job that never
+# succeeds alerts 30 h after the deploy.
 - name: Seed the snapshot metrics
   ansible.builtin.copy:
     dest: "{{ base_setup_textfile_dir }}/snapshot-{{ item.name }}.prom"
