@@ -27,7 +27,8 @@ NEXTCLOUD_PORT=${V[8]}
 NTFY_PORT=${V[9]}
 
 CTL_DIR=$(mktemp -d)
-trap 'rm -rf "${CTL_DIR}"' EXIT
+HOLD=/run/systemd/system/auto-reboot-staged.service.d/functional-test.conf
+trap 'run_root "rm -rf ${HOLD%/*}; systemctl daemon-reload" >/dev/null; rm -rf "${CTL_DIR}"' EXIT
 SSH=(ssh -p "${TARGET_PORT}" "${SSH_OPTS[@]}" -o LogLevel=ERROR
      -o ControlMaster=auto -o ControlPersist=60s -o ControlPath="${CTL_DIR}/%C"
      "core@${TARGET_HOST}")
@@ -61,6 +62,11 @@ run_root() {
 run_user() {
   remote "${RUN0} --user=$1 -- /usr/bin/bash -c \"\$(echo $(b64 "$2") | base64 -d)\""
 }
+
+# The snapshot and backup checks start units whose OnSuccess= chain ends in
+# auto-reboot-staged.service. A runtime drop-in with a condition that never
+# holds makes systemd skip it; a mask would lose to the unit in /etc.
+run_root "mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload" >/dev/null
 
 # As core, with `lq <path> [curl args]` querying Loki through Grafana's
 # datasource proxy. The admin credential travels on ssh stdin.
