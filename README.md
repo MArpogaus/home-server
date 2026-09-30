@@ -131,7 +131,7 @@ it instead of merging, so a host that overrides one repeats all its keys.
 | ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
-| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
+| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
@@ -177,13 +177,14 @@ check` and read `restic snapshots` before each prune, and after a compromise
 keep the good snapshots by ID.
 
 `/usr/local/bin/restic` runs restic on the host with the host's repository,
-for example `run0 restic snapshots`. It mounts `/var/services` read-only.
+for example `run0 restic snapshots`. It mounts no host path by itself;
+`RESTIC_PODMAN_ARGS` adds the mounts.
 
 ### Restore a service
 
-`btrfs-restore.sh` stops the service's pod and moves its live subvolume to
-`snapshots/<service>/before-restore-<time>`. For a snapshot from a target,
-the script first receives it into `snapshots/<service>/`. The script then makes a writable
+`btrfs-restore.sh` first receives a snapshot from a target into
+`snapshots/<service>/`. It then stops the service's pod and moves its live
+subvolume to `snapshots/<service>/before-restore-<time>`. It makes a writable
 copy of the snapshot and uses it as the live subvolume. Nested subvolumes,
 such as Nextcloud's `data/custom_apps`, come over from the old state. The
 deploy starts the service again.
@@ -206,16 +207,19 @@ run0 mkdir -p $(dirname $S)
 run0 btrfs subvolume create $S
 run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud --target $S
 run0 find $S -xdev -perm /6000 \( -uid 0 -o -gid 0 -o -not -path '*/.local/share/containers/*' \) -ls
+run0 getcap -r $S | grep -v rootid
 run0 btrfs-restore.sh /var/services/nextcloud $S
 ansible-playbook site.yml -l <host>
 ```
 
-The `find` lists the setuid and setgid files that a rootless service does not
-bring: those outside Podman's image layers, and those owned by root, which no
-rootless image layer holds. Such a file is suspect. Run the same `find` on a
-snapshot from a target before you restore it. Delete the
-`before-restore-*` copy, and a received or restic copy, when the service works
-again.
+The `find` and the `getcap` list what a rootless service does not bring. The
+`find` shows setuid and setgid files outside Podman's image layers, and those
+that root owns: no rootless image layer holds such a file. The `getcap` shows
+file capabilities that are not namespaced to a container. Each hit is
+suspect. Run both on a snapshot from a target before you restore it.
+
+Delete the `before-restore-*` copy, and a received or restic copy, when the
+service works again.
 
 On a new host, deploy first, so the users, their uids and the subvolumes
 exist. Then restore each service and deploy again. A nested subvolume is in
@@ -285,8 +289,8 @@ Covered:
   may forward local ports only, because Grafana is reachable only through a
   tunnel. sshd drops a dead client after 10 to 15 minutes, so a broken
   connection does not block the staged reboot.
-- Every container drops all capabilities and sets `no-new-privileges` and a
-  pids limit.
+- Every service container drops all capabilities and sets `no-new-privileges`
+  and a pids limit.
 - `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract").
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
@@ -316,8 +320,9 @@ SELinux exceptions:
   SecureBlue's `harden_container_userns` blocks rootless Podman.
 - iscsid needs a permissive `iscsid_t`, which the host task file sets. A
   constraint, not an allow rule, stops its netlink socket.
-- `/usr/local/bin/restic` runs its root container with `label=disable`, so it
-  can read the files of every service.
+- `/usr/local/bin/restic` runs its root container with `label=disable` and
+  Podman's default capabilities, so it can read and restore the files of every
+  service.
 
 ## Alerts
 
