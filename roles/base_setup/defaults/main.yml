@@ -17,7 +17,7 @@ base_setup_firewall_services:
   - https
 
 # uuid (of the LUKS container) and name. Empty disables
-# backups. README.md, "Architecture".
+# backups. README.md, "Backup and restore".
 base_setup_backup_targets: []
 base_setup_backup_root: /var/backup
 base_setup_backup_retention_days: 90
@@ -37,5 +37,5 @@ base_setup_restic_repository: ""
 base_setup_restic_password: ""
 # Backend settings, such as RESTIC_REST_USERNAME and RESTIC_REST_PASSWORD.
 base_setup_restic_env: {}
-base_setup_restic_image: "docker.io/restic/restic:0.19.1"
-base_setup_restic_schedule: "*-*-* 01:00"
+# By digest: it runs as root and reads every service's files.
+base_setup_restic_image: "docker.io/restic/restic:0.19.1@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510"

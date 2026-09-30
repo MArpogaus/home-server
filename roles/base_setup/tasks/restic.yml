@@ -1,14 +1,7 @@
 ---
-- name: Ensure the restic config directory exists
-  ansible.builtin.file:
-    path: /etc/restic
-    state: directory
-    owner: root
-    mode: "0700"
-
 - name: Write the restic repository and credentials
   ansible.builtin.copy:
-    dest: /etc/restic/env
+    dest: /etc/restic.env
     content: |
       {% for key, value in ({'RESTIC_REPOSITORY': base_setup_restic_repository,
                              'RESTIC_PASSWORD': base_setup_restic_password} | combine(base_setup_restic_env)).items() %}
@@ -17,13 +10,6 @@
     owner: root
     mode: "0600"
   no_log: true
-
-- name: Ensure the restic cache directory exists
-  ansible.builtin.file:
-    path: /var/cache/restic
-    state: directory
-    owner: root
-    mode: "0700"
 
 - name: Deploy the restic command
   ansible.builtin.template:
@@ -68,8 +54,8 @@
 # A backup that never succeeds then reads as stale 30 h after the first deploy.
 - name: Seed the restic backup metric
   ansible.builtin.copy:
-    dest: "{{ base_setup_textfile_dir }}/restic-backup.prom"
-    content: "restic_backup_last_success_timestamp_seconds{target=\"restic\"} {{ ansible_facts.date_time.epoch }}\n"
+    dest: "{{ base_setup_textfile_dir }}/backup-restic.prom"
+    content: "backup_last_success_timestamp_seconds{target=\"restic\"} {{ ansible_facts.date_time.epoch }}\n"
     force: false
     owner: root
     mode: "0644"

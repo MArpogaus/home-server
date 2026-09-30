@@ -2,7 +2,7 @@
 Description=Nightly restic backup of the service snapshots
 
 [Timer]
-OnCalendar={{ base_setup_restic_schedule }}
+OnCalendar=*-*-* 01:00
 Persistent=true
 
 [Install]

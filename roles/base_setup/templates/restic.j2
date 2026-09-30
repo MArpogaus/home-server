@@ -1,8 +1,9 @@
 #!/bin/bash
 # restic from its official image, as root, with this host's repository in
-# /etc/restic/env. RESTIC_PODMAN_ARGS adds podman options, such as mounts.
+# /etc/restic.env. /var/services is read-only; RESTIC_PODMAN_ARGS adds podman
+# options, such as the writable mount of a restore target.
 # shellcheck disable=SC2086
-exec podman run --rm -i --network host --security-opt label=disable \
-	--hostname "$(hostname)" --env-file /etc/restic/env \
-	-v /var/cache/restic:/root/.cache/restic -v {{ base_setup_services_dir }}:{{ base_setup_services_dir }} \
+exec podman run --rm -i --security-opt label=disable \
+	--hostname "$(hostname)" --env-file /etc/restic.env -v restic-cache:/root/.cache/restic \
+	-v {{ base_setup_services_dir }}:{{ base_setup_services_dir }}:ro \
 	${RESTIC_PODMAN_ARGS:-} {{ base_setup_restic_image }} "$@"
