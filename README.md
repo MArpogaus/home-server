@@ -182,7 +182,7 @@ for example `run0 restic snapshots`. It mounts no host path by itself;
 
 ### Restore a service
 
-`btrfs-restore.sh` first receives a snapshot from a target into
+For a snapshot on a target, `btrfs-restore.sh` first receives it into
 `snapshots/<service>/`. It then stops the service's pod and moves its live
 subvolume to `snapshots/<service>/before-restore-<time>`. It makes a writable
 copy of the snapshot and uses it as the live subvolume. Nested subvolumes,
