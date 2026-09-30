@@ -248,16 +248,6 @@
     value: "80"
     sysctl_file: /etc/sysctl.d/90-unprivileged-port-start.conf
 
-- name: Mask every way to sleep
-  ansible.builtin.systemd_service:
-    name: "{{ item }}"
-    masked: true
-  loop:
-    - sleep.target
-    - suspend.target
-    - hibernate.target
-    - hybrid-sleep.target
-
 - name: Enable swap on zram
   ansible.builtin.copy:
     dest: /etc/systemd/zram-generator.conf
