@@ -15,20 +15,25 @@ LOCAL="$(dirname "${LIVE}")/snapshots/${SVC}"
 btrfs subvolume show "${SNAP}" >/dev/null
 
 # A snapshot on a target is received next to the local ones first: a writable
-# snapshot must be on the same filesystem as the live subvolume.
+# snapshot must be on the same filesystem as the live subvolume. receive sets
+# the copy read-only when it finishes, so a writable copy is a partial one.
+readonly_subvolume() {
+	btrfs property get -ts "$1" ro | grep -qx 'ro=true'
+}
 if [ "$(dirname "${SNAP}")" != "${LOCAL}" ]; then
-	if [ -e "${LOCAL}/$(basename "${SNAP}")" ]; then
-		echo "${LOCAL}/$(basename "${SNAP}") exists; using it"
-	else
+	COPY="${LOCAL}/$(basename "${SNAP}")"
+	if [ -e "${COPY}" ] && ! readonly_subvolume "${COPY}"; then
+		btrfs subvolume delete "${COPY}"
+	fi
+	if [ ! -e "${COPY}" ]; then
 		mkdir -p "${LOCAL}"
 		btrfs send -q "${SNAP}" | btrfs receive "${LOCAL}"
 	fi
-	SNAP="${LOCAL}/$(basename "${SNAP}")"
+	readonly_subvolume "${COPY}"
+	SNAP="${COPY}"
 fi
 
-if id -u "${SVC}" >/dev/null 2>&1; then
-	systemctl --user -M "${SVC}@" stop "${SVC}-pod.service" || true
-fi
+systemctl --user -M "${SVC}@" stop "${SVC}-pod.service"
 
 ASIDE=""
 if [ -e "${LIVE}" ]; then
@@ -41,12 +46,18 @@ btrfs subvolume snapshot "${SNAP}" "${LIVE}"
 
 # A restic restore leaves its target directory to root, so the owner and
 # mode come from the old live subvolume. So does each nested subvolume, which
-# no snapshot holds. Inode 256 is the root of a Btrfs subvolume.
+# no snapshot holds; a path through a symlink of the restored tree is skipped.
+# Inode 256 is the root of a Btrfs subvolume.
 if [ -n "${ASIDE}" ]; then
 	chown --reference="${ASIDE}" "${LIVE}"
 	chmod --reference="${ASIDE}" "${LIVE}"
 	while IFS= read -r nested; do
 		rel="${nested#"${ASIDE}"/}"
+		parent="$(dirname "${LIVE}/${rel}")"
+		if [ "$(realpath -m "${parent}")" != "${parent}" ]; then
+			echo "WARNING: ${parent} is a symlink; ${rel} stays in ${ASIDE}" >&2
+			continue
+		fi
 		if [ -d "${LIVE}/${rel}" ]; then
 			rmdir "${LIVE}/${rel}"
 		fi
@@ -59,11 +70,7 @@ fi
 # taken, with locks of another boot. renumber gives them locks of this one,
 # then the pods go, and the deploy starts from a clean state. Images and
 # volumes stay.
-if id -u "${SVC}" >/dev/null 2>&1; then
-	for cmd in "system renumber" "pod rm --all --force"; do
-		# shellcheck disable=SC2086
-		systemd-run --machine="${SVC}@" --user --wait --pipe --quiet podman ${cmd}
-	done
-fi
+systemd-run --machine="${SVC}@" --user --wait --pipe --quiet podman system renumber
+systemd-run --machine="${SVC}@" --user --wait --pipe --quiet podman pod rm --all --force
 
 echo "Restored ${LIVE} from ${SNAP}. Deploy the host to start ${SVC} again."
