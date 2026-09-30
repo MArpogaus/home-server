@@ -118,9 +118,6 @@ defaults are generic; this deployment's own settings, such as the geo
 allowlist and the phone region, are in `inventory/group_vars/homeserver.yml`.
 In the secrets repository, `group_vars/homeserver.yml` holds what every host
 shares, and `host_vars/<host>.yml` one host's credentials and overrides.
-`nextcloud_service_config` and `bunker_service_config` live in
-`inventory/group_vars/homeserver.yml`. A dict set in a second file replaces
-it instead of merging, so a host that overrides one repeats all its keys.
 
 | Variable | Required | Controls |
 |---|---|---|
