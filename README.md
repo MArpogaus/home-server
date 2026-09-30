@@ -97,8 +97,8 @@ needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
 `../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
 host uses the agent. `build.sh` authorises the smartcard key in the agent and
-asks `mkpasswd` for core's password, which the console and `root-gate` use. `SSH_PUBLIC_KEY` and `PASSWORD_HASH`
-set them instead.
+asks `mkpasswd` for core's password, which the console and `root-gate` use.
+`SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead.
 
 ```bash
 cd ignition
@@ -308,7 +308,8 @@ Known gaps:
 
 - While the root gate is open, the SSH key alone gives root. Closed, `run0`
   asks for core's password. The gate is a file in `/run/polkit/`, which the
-  polkit rule from Ignition checks, so a boot closes it.
+  polkit rule from Ignition checks, so a boot closes it. The gate is for all
+  of core's processes, so an intruder as core gets root the next time it opens.
 - `ip_unprivileged_port_start=80` lets any local user bind 80 and 443 while
   the proxy is down.
 - Unattended updates reach production with no gate. Images outside
