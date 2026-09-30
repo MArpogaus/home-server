@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Container image tags in the defaults of an Ansible service role, and the digest-pinned Ignition tools in ignition/build.sh. Dependabot covers the actions and the pre-commit hooks.",
+  "description": "Container image tags in the role defaults, with the digest of the pinned restic image, and the digest-pinned Ignition tools in ignition/build.sh. Dependabot covers the actions and the pre-commit hooks.",
   "extends": [
     "config:recommended",
     ":semanticCommitTypeAll(chore)"
