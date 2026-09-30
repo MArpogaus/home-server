@@ -66,10 +66,16 @@ ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 
 Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
 
+The deploy and the functional test escalate with `run0`, which needs the root
+gate open: `ssh -t core@<address> root-gate on` asks for core's password once.
+The gate closes after 2 h; `--timer <time>` sets another time, `--no-timer`
+keeps it open until the next boot, and `root-gate off` closes it at once.
+
 ### Test VM
 
 The VM needs `qemu-system-x86_64` with `/dev/kvm`, `qemu-img`, `unxz`,
-`ssh-keygen` and `podman`. It has 8 GB and 2 vCPUs, and publishes SSH, HTTP
+`ssh-keygen`, `mkpasswd` and `podman`. core's password on the VM is `test`, or
+`VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes SSH, HTTP
 and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 
 ```bash
@@ -91,7 +97,7 @@ needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
 `../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
 host uses the agent. `build.sh` authorises the smartcard key in the agent and
-asks `mkpasswd` for a console password. `SSH_PUBLIC_KEY` and `PASSWORD_HASH`
+asks `mkpasswd` for core's password, which the console and `root-gate` use. `SSH_PUBLIC_KEY` and `PASSWORD_HASH`
 set them instead.
 
 ```bash
@@ -300,8 +306,9 @@ Covered:
 
 Known gaps:
 
-- The polkit rule from Ignition gives `core` unauthenticated root, so the SSH
-  key is the whole perimeter.
+- While the root gate is open, the SSH key alone gives root. Closed, `run0`
+  asks for core's password. The gate is a file in `/run/polkit/`, which the
+  polkit rule from Ignition checks, so a boot closes it.
 - `ip_unprivileged_port_start=80` lets any local user bind 80 and 443 while
   the proxy is down.
 - Unattended updates reach production with no gate. Images outside

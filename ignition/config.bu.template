@@ -39,7 +39,9 @@ storage:
           PasswordAuthentication no
           KbdInteractiveAuthentication no
           PermitRootLogin no
-    - path: /etc/polkit-1/rules.d/60-run0-fast-user-auth.rules
+    # run0 for core without a password while root-gate keeps the gate open;
+    # else polkit asks for core's password.
+    - path: /etc/polkit-1/rules.d/60-root-gate.rules
       mode: 0644
       contents:
         inline: |
@@ -47,9 +49,18 @@ storage:
             if (action.id === "org.freedesktop.systemd1.manage-units" &&
                 subject.user === "core" &&
                 subject.isInGroup("wheel")) {
-              return polkit.Result.YES;
+              try {
+                polkit.spawn(["/usr/bin/test", "-e", "/run/polkit/root-gate"]);
+                return polkit.Result.YES;
+              } catch (error) {
+                return polkit.Result.NOT_HANDLED;
+              }
             }
           });
+    - path: /usr/local/bin/root-gate
+      mode: 0755
+      contents:
+        local: root-gate
 systemd:
   units:
     - name: install-python.service

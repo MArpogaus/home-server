@@ -1,0 +1,25 @@
+#!/bin/sh
+# root-gate on [--timer <time> | --no-timer] | off
+# While /run/polkit/root-gate exists, core runs run0 without a password. "on" asks for
+# core's password once and closes the gate after the time (default 2h), or at
+# the next boot with --no-timer.
+set -eu
+
+case "${1:-} ${2:-}" in
+"on ") timer=2h ;;
+"on --timer") timer="${3:?time missing, such as 30min}" ;;
+"on --no-timer") timer="" ;;
+"off ") timer="" ;;
+*)
+	echo "usage: root-gate on [--timer <time> | --no-timer] | off" >&2
+	exit 2
+	;;
+esac
+
+if [ "$1" = off ]; then
+	exec run0 sh -c 'systemctl stop root-gate-close.timer 2>/dev/null; rm -f /run/polkit/root-gate'
+fi
+# shellcheck disable=SC2016 # expands in the root shell
+exec run0 sh -c 'systemctl stop root-gate-close.timer 2>/dev/null
+touch /run/polkit/root-gate
+[ -z "$1" ] || systemd-run --quiet --collect --unit=root-gate-close --on-active="$1" rm -f /run/polkit/root-gate' sh "${timer}"

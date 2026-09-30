@@ -53,10 +53,10 @@ if [ -z "${SSH_PUBLIC_KEY}" ]; then
 fi
 echo "Authorising: ${SSH_PUBLIC_KEY%% *} ...${SSH_PUBLIC_KEY##* }"
 
-# Console password, for physical recovery only. PASSWORD_HASH=none sets none.
+# core's password: the console and root-gate ask for it.
 if [ -z "${PASSWORD_HASH:-}" ]; then
 	command -v mkpasswd >/dev/null || { echo "ERROR: mkpasswd not found; set PASSWORD_HASH"; exit 1; }
-	echo "Console password for the 'core' user (physical recovery):"
+	echo "Password for the 'core' user (console and root-gate):"
 	PASSWORD_HASH="$(mkpasswd --method=yescrypt)"
 fi
 
@@ -67,9 +67,6 @@ config="$(<"${TEMPLATE}")"
 	config="${config//'${PASSWORD_HASH}'/"${PASSWORD_HASH}"}"
 }
 printf '%s\n' "${config}" > "${BUTANE_CONFIG}"
-if [ "${PASSWORD_HASH}" = "none" ]; then
-	sed -i '/password_hash:/d' "${BUTANE_CONFIG}"
-fi
 rm -f "${SCRIPT_DIR}/platform.ign"
 if [ -n "${PLATFORM}" ]; then
 	"${BUTANE[@]}" --strict < "${PLATFORM}" > "${SCRIPT_DIR}/platform.ign"
