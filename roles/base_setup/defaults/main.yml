@@ -1,12 +1,12 @@
 ---
-# Set by the deployment. Keys: name, uid, optional groups. README.md, "Adding a
-# service".
+# Set by the deployment. Keys: name, uid, optional port and groups. README.md,
+# "Adding a service".
 base_setup_services: []
 
 base_setup_btrfs_snapshot_retention_days: 30
 
-# uuid (of the LUKS container) and name. Empty disables
-# backups. README.md, "Backup and restore".
+# uuid (of the LUKS container) and name. Empty: no backup target. README.md,
+# "Backup and restore".
 base_setup_backup_targets: []
 base_setup_backup_retention_days: 90
 
