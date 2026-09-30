@@ -199,7 +199,7 @@ if [[ " ${SERVICES} " == *" ntfy "* ]]; then
     "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:'"${NTFY_PORT}"'/alerts' \
       "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
     "^200$"
-  expect "ntfy refuses the token a read" \
+  expect "ntfy refuses a read with the token" \
     "$(remote 'curl -s -o /dev/null -w %{http_code} -K - "http://127.0.0.1:'"${NTFY_PORT}"'/alerts/json?poll=1"' \
       "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
     "^403$"
