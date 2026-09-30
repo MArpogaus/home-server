@@ -23,4 +23,5 @@ esac
 # Only this first run0 asks for the password; the gate is open after it.
 run0 touch "${gate}"
 run0 systemctl stop root-gate-close.timer 2>/dev/null || true
-[ -z "${timer}" ] || run0 systemd-run --quiet --collect --unit=root-gate-close --on-active="${timer}" rm -f "${gate}"
+[ -z "${timer}" ] || run0 systemd-run --quiet --collect --unit=root-gate-close --on-active="${timer}" rm -f "${gate}" ||
+	{ run0 rm -f "${gate}"; exit 1; }
