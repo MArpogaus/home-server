@@ -87,6 +87,8 @@ iso)
 		iso customize --force --dest-ignition config.ign \
 		--dest-device "${DEVICE}" \
 		-o install.iso "/iso/$(basename "${SRC_ISO}")"
+	# The ISO embeds config.ign, and Podman's default umask is 0022.
+	chmod 600 "${SCRIPT_DIR}/install.iso"
 	echo "Wrote ${SCRIPT_DIR}/install.iso"
 	echo "Booting it installs onto ${DEVICE} and reboots, with no prompt."
 	;;
