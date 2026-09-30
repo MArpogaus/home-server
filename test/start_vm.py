@@ -130,7 +130,7 @@ def build_ignition(platform):
             ["mkpasswd", "--method=yescrypt", "--stdin"], input=password,
             check=True, capture_output=True, text=True).stdout.strip()
     else:
-        print("mkpasswd not found — no console password, SSH key only")
+        print("mkpasswd not found; no console password, SSH key only")
         env["PASSWORD_HASH"] = "none"
 
     platform_args = ["--platform", platform] if platform else []
