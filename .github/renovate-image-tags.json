@@ -18,10 +18,11 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|/)ansible-role/[^/]+/defaults/main\\.yml$/"
+        "/(^|/)ansible-role/[^/]+/defaults/main\\.yml$/",
+        "/(^|/)roles/base_setup/defaults/main\\.yml$/"
       ],
       "matchStrings": [
-        "_image:\\s*[\"']?(?<depName>[^\"'\\s:@]+):(?<currentValue>[^\"'\\s@]+)[\"']?"
+        "_image:\\s*[\"']?(?<depName>[^\"'\\s:@]+):(?<currentValue>[^\"'\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]{64}))?[\"']?"
       ],
       "datasourceTemplate": "docker"
     },
