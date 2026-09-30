@@ -308,6 +308,9 @@ Known gaps:
 - `btrfs-restore.sh` stops only the service's pod. A compromised service user
   whose own units keep running can swap a directory for a symlink while the
   script moves a nested subvolume.
+- The `monitoring` user is in `systemd-journal` and reads the whole host
+  journal. Alloy redacts only what it sends to Loki, so a compromised
+  monitoring service reads tokens that other units log.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 
@@ -320,6 +323,11 @@ SELinux exceptions:
 - `/usr/local/bin/restic` runs its root container with `label=disable` and
   Podman's default capabilities, so it can read and restore the files of every
   service.
+- Alloy runs as `container_logreader_t`. `home-server-monitoring` loads the
+  module `alloy_journal_watch.cil`, which lets that type watch `/var/log`
+  directories.
+- `btrfs-backup.sh` labels the root of each backup target `container_file_t`,
+  so node-exporter can read its free space.
 
 ## Alerts
 
