@@ -1,0 +1,7 @@
+[Unit]
+Description=Btrfs scrub of %f
+RequiresMountsFor=%f
+
+[Service]
+Type=oneshot
+ExecStart=systemd-inhibit --what=shutdown --who=btrfs-scrub@%i --why="scrub in progress" btrfs scrub start -B %f

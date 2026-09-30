@@ -35,12 +35,11 @@ git clone <the private secrets repo> home-server-secrets
   `uid * base_setup_subuid_range_size + 100000`. `site.yml` then runs the
   service role from `services/<name>/ansible-role`, which calls
   `quadlet_service`. Services reach each other through host-published ports.
-- **Snapshots and backup targets.** `btrfs-snapshot@<service>.timer` takes a
-  read-only snapshot each night. The finished snapshot starts
-  `btrfs-backup@<target>.service`, an incremental `btrfs send` to each target.
-  A target is a LUKS2 container with Btrfs (USB disk or iSCSI LUN), found by
-  UUID, opened with `nofail` and automounted at `/var/backup/<name>`. A nested
-  subvolume is not in a snapshot.
+- **Snapshots and backup targets.** The finished snapshot of a service starts
+  `btrfs-backup@<target>.service`. A target is a LUKS2 container with Btrfs
+  (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
+  at `/var/backup/<name>`. A nested subvolume is not in a snapshot. "Backup and
+  restore" has the whole flow.
 - **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
   rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots
   after the last backup, or at 03:00.
@@ -132,9 +131,11 @@ it instead of merging, so a host that overrides one repeats all its keys.
 | ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
-| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
+| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
+| `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
+| `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
@@ -143,6 +144,88 @@ Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `functional_test.sh <host>` passes further arguments to `ansible`, such as
 `-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also runs a real backup to
 that target.
+
+## Backup and restore
+
+Each night `btrfs-snapshot@<service>.timer` takes a read-only snapshot. The
+Nextcloud snapshot holds a database dump from just before it.
+
+- Each target in `base_setup_backup_targets` receives the snapshots with an
+  incremental `btrfs send`. A target is fast to restore from, but the host can
+  delete it.
+- With `base_setup_restic_repository` set, `restic-backup.timer` copies the
+  newest snapshot of every service to a restic repository. restic encrypts,
+  deduplicates and sends only the changes.
+
+Once a month `btrfs-scrub@<path>.timer` scrubs the host (through `/var`, as
+`/sysroot` is read-only) and each target. A scrub reads every block and
+checks it against its checksum. An error it cannot repair fails the unit, and
+`ScheduledJobFailed` fires.
+
+The restic repository survives a compromised host only if its server is
+append-only: the backend credentials in `base_setup_restic_env` add data but
+delete none. `rest-server --append-only` does this, and so do hosted services
+with an append-only mode. The restic password alone does not protect the
+repository.
+
+Prune from another machine, with backend credentials that may delete: `restic
+forget --keep-daily 30 --keep-monthly 12 --prune`. A compromised host can add
+snapshots with a false time, which push the good ones out of these rules. A
+snapshot names its own time, so trust the time its file arrived on the server
+(`ls -l --time-style=full-iso <repository>/snapshots/` there). Run `restic
+check` and read `restic snapshots` before each prune, and after a compromise
+keep the good snapshots by ID.
+
+`/usr/local/bin/restic` runs restic on the host with the host's repository,
+for example `run0 restic snapshots`. It mounts no host path by itself;
+`RESTIC_PODMAN_ARGS` adds the mounts.
+
+### Restore a service
+
+For a snapshot on a target, `btrfs-restore.sh` first receives it into
+`snapshots/<service>/`. It then stops the service's pod and moves its live
+subvolume to `snapshots/<service>/before-restore-<time>`. It makes a writable
+copy of the snapshot and uses it as the live subvolume. Nested subvolumes,
+such as Nextcloud's `data/custom_apps`, come over from the old state. The
+deploy starts the service again.
+
+```bash
+run0 btrfs-restore.sh /var/services/nextcloud /var/services/snapshots/nextcloud/2026-09-29
+run0 btrfs-restore.sh /var/services/nextcloud /var/backup/nas/nextcloud/2026-09-29
+ansible-playbook site.yml -l <host>
+```
+
+The first line restores from a local snapshot, the second from a backup
+target. From restic, restore into a new subvolume first. Pick the snapshot by
+its ID from `restic snapshots`, not `latest`. After a compromise, the newest
+snapshot can be a forgery. On a new host, it can be the new host's empty one.
+
+```bash
+run0 restic snapshots
+S=/var/services/snapshots/nextcloud/restic-2026-09-29
+run0 mkdir -p $(dirname $S)
+run0 btrfs subvolume create $S
+run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud --target $S
+run0 find $S -xdev -perm /6000 \( -uid 0 -o -gid 0 -o -not -path '*/.local/share/containers/*' \) -ls
+run0 getcap -r $S | grep -v rootid
+run0 btrfs-restore.sh /var/services/nextcloud $S
+ansible-playbook site.yml -l <host>
+```
+
+The `find` and the `getcap` list what a rootless service does not bring. The
+`find` shows setuid and setgid files outside Podman's image layers, and those
+that root owns: no rootless image layer holds such a file. The `getcap` shows
+file capabilities that are not namespaced to a container. Each hit is
+suspect. Run both on a snapshot from a target before you restore it.
+
+Delete the `before-restore-*` copy, and a received or restic copy, when the
+service works again.
+
+On a new host, deploy first, so the users, their uids and the subvolumes
+exist. Then restore each service and deploy again. A nested subvolume is in
+no backup: install the Nextcloud apps of `custom_apps` again with `occ
+app:install`, and download the Recognize models with `occ
+recognize:download-models`.
 
 ## Adding a service
 
@@ -187,7 +270,9 @@ The ports in use:
   `LogDriver=passthrough` the unit's priority applies. Each service sets it in
   its own `container.d/`; bunker cannot and keeps journald.
 - **Updates are unattended.** Digest pinning and auto-update exclude each
-  other, and this project chose auto-update. The reboot uses
+  other, and this project chose auto-update. The restic image is the
+  exception: it runs as root, so it is pinned by digest, and Renovate updates
+  it. The reboot uses
   `--check-inhibitors=yes`, so it never interrupts a backup or a dump.
 - **The secrets repository is a second inventory.** `ansible.cfg` lists it
   after this one, so its `group_vars/` and `host_vars/` win over this
@@ -204,9 +289,9 @@ Covered:
   may forward local ports only, because Grafana is reachable only through a
   tunnel. sshd drops a dead client after 10 to 15 minutes, so a broken
   connection does not block the staged reboot.
-- Every container drops all capabilities and sets `no-new-privileges` and a
-  pids limit.
-- `policy.json` rejects every image that no service role declares
+- Every service container drops all capabilities and sets `no-new-privileges`
+  and a pids limit.
+- `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract").
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
   Only the inventory entry `test` skips the check.
@@ -223,9 +308,11 @@ Known gaps:
   `ghcr.io/marpogaus` pull without a signature.
 - The test VM is root for anyone with `test/coreos_key`, which has no
   passphrase. `test/start_vm.py` creates it when it is missing.
+- `btrfs-restore.sh` stops only the service's pod. A compromised service user
+  whose own units keep running can swap a directory for a symlink while the
+  script moves a nested subvolume.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
-- No script restores a backup, and no `btrfs scrub` runs on a schedule.
 
 SELinux exceptions:
 
@@ -233,6 +320,9 @@ SELinux exceptions:
   SecureBlue's `harden_container_userns` blocks rootless Podman.
 - iscsid needs a permissive `iscsid_t`, which the host task file sets. A
   constraint, not an allow rule, stops its netlink socket.
+- `/usr/local/bin/restic` runs its root container with `label=disable` and
+  Podman's default capabilities, so it can read and restore the files of every
+  service.
 
 ## Alerts
 
@@ -240,7 +330,7 @@ SELinux exceptions:
 |---|---|---|
 | `JobStale` | critical | A snapshot, backup or dump (a `*_last_success` textfile metric) has not succeeded for 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
-| `ScheduledJobFailed` | warning | A snapshot or backup unit failed in the last 6 hours |
+| `ScheduledJobFailed` | warning | A snapshot, backup or scrub unit failed in the last 6 hours |
 | `AutoRebootBlocked` | warning | The staged-update reboot was refused twice in 50 hours |
 | `SshLogin` | info | An SSH key login succeeded |
 | `SshLoginFailed` | warning | More than 5 failed SSH logins in 15 minutes |
