@@ -13,6 +13,13 @@
   when: "'disabled' in secureblue_container_userns.stdout"
   changed_when: true
 
+# SecureBlue's policy stops iscsid from creating its netlink socket.
+- name: Make iscsid a permissive SELinux domain
+  community.general.selinux_permissive:
+    name: iscsid_t
+    permissive: true
+  when: base_setup_iscsi_portal | default('') | length > 0
+
 # securecore sets AllowTcpForwarding no. Grafana is reachable through a tunnel
 # alone, so the admin user gets `local` back and nothing else.
 - name: Allow local port forwarding for the admin user

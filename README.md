@@ -320,7 +320,7 @@ SELinux exceptions:
 
 - `platform/secureblue.yml` runs `ujust set-container-userns on`, because
   SecureBlue's `harden_container_userns` blocks rootless Podman.
-- iscsid needs a permissive `iscsid_t`, which the host task file sets. A
+- iscsid needs a permissive `iscsid_t`, which `platform/secureblue.yml` sets. A
   constraint, not an allow rule, stops its netlink socket.
 - `/usr/local/bin/restic` runs its root container with `label=disable` and
   Podman's default capabilities, so it can read and restore the files of every
