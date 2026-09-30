@@ -81,14 +81,13 @@ echo "Wrote ${IGNITION}"
 case "${MODE}" in
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
-	podman run --pull=always --rm --security-opt label=disable \
+	# The ISO embeds config.ign.
+	podman run --pull=always --rm --security-opt label=disable --umask 0077 \
 		-v "${SCRIPT_DIR}":/data -v "${SRC_DIR}":/iso -w /data \
 		"${INSTALLER_IMAGE}" \
 		iso customize --force --dest-ignition config.ign \
 		--dest-device "${DEVICE}" \
 		-o install.iso "/iso/$(basename "${SRC_ISO}")"
-	# The ISO embeds config.ign, and Podman's default umask is 0022.
-	chmod 600 "${SCRIPT_DIR}/install.iso"
 	echo "Wrote ${SCRIPT_DIR}/install.iso"
 	echo "Booting it installs onto ${DEVICE} and reboots, with no prompt."
 	;;
