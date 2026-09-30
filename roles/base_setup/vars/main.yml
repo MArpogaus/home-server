@@ -3,6 +3,7 @@
 base_setup_services_dir: /var/services
 base_setup_btrfs_snapshot_dir: "{{ base_setup_services_dir }}/snapshots"
 base_setup_backup_root: /var/backup
+base_setup_luks_keyfile: /etc/luks/backup.key
 
 # The Ignition config installs the key for this registry, so both stay fixed.
 base_setup_signed_registry: ghcr.io/marpogaus
