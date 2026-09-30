@@ -53,7 +53,7 @@ secrets repository's inventory after it, and the Vault password file.
 `secrets.example/` holds the templates for the secrets repository.
 
 ```bash
-uv tool install --reinstall ansible --with passlib --with bcrypt
+uv tool install --reinstall ansible --with-executables-from ansible-core --with passlib --with bcrypt
 ansible-galaxy collection install -r requirements.yml   # again after requirements.yml changes
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
