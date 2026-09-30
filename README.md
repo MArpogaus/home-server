@@ -326,9 +326,8 @@ SELinux exceptions:
 - `/usr/local/bin/restic` runs its root container with `label=disable` and
   Podman's default capabilities, so it can read and restore the files of every
   service.
-- Alloy runs as `container_logreader_t`. `home-server-monitoring` loads the
-  module `alloy_journal_watch.cil`, which lets that type watch `/var/log`
-  directories.
+- Alloy runs as `container_logreader_t` with a local policy module:
+  `home-server-monitoring/README.md`, "Specifics".
 - `btrfs-backup.sh` labels the root of each backup target `container_file_t`,
   so node-exporter can read its free space.
 
