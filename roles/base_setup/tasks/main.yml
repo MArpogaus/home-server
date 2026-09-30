@@ -89,6 +89,12 @@
     loop_var: svc
     label: "{{ svc.name }}"
 
+- name: Admit the restic image
+  ansible.builtin.set_fact:
+    base_setup_image_repos: >-
+      {{ base_setup_image_repos + [base_setup_restic_image | regex_replace('@[^@]*$', '') | regex_replace(':[^:/]+$', '')] }}
+  when: base_setup_restic_repository | length > 0
+
 # A policy scope matches by prefix, so a registry or namespace alone would
 # accept every image below it.
 - name: Refuse an image reference that is not a repository
@@ -286,6 +292,10 @@
 - name: Set up the iSCSI backup target
   ansible.builtin.include_tasks: backup_target.yml
   when: base_setup_iscsi_portal | length > 0
+
+- name: Set up the restic backup
+  ansible.builtin.include_tasks: restic.yml
+  when: base_setup_restic_repository | length > 0
 
 # node-exporter needs search here to stat each mounted target.
 - name: Ensure the backup root exists

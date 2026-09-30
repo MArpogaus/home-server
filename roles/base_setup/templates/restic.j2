@@ -1,0 +1,8 @@
+#!/bin/bash
+# restic from its official image, as root, with this host's repository in
+# /etc/restic/env. RESTIC_PODMAN_ARGS adds podman options, such as mounts.
+# shellcheck disable=SC2086
+exec podman run --rm -i --network host --security-opt label=disable \
+	--hostname "$(hostname)" --env-file /etc/restic/env \
+	-v /var/cache/restic:/root/.cache/restic -v {{ base_setup_services_dir }}:{{ base_setup_services_dir }} \
+	${RESTIC_PODMAN_ARGS:-} {{ base_setup_restic_image }} "$@"

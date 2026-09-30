@@ -1,0 +1,82 @@
+---
+- name: Ensure the restic config directory exists
+  ansible.builtin.file:
+    path: /etc/restic
+    state: directory
+    owner: root
+    mode: "0700"
+
+- name: Write the restic repository and credentials
+  ansible.builtin.copy:
+    dest: /etc/restic/env
+    content: |
+      {% for key, value in ({'RESTIC_REPOSITORY': base_setup_restic_repository,
+                             'RESTIC_PASSWORD': base_setup_restic_password} | combine(base_setup_restic_env)).items() %}
+      {{ key }}={{ value }}
+      {% endfor %}
+    owner: root
+    mode: "0600"
+  no_log: true
+
+- name: Ensure the restic cache directory exists
+  ansible.builtin.file:
+    path: /var/cache/restic
+    state: directory
+    owner: root
+    mode: "0700"
+
+- name: Deploy the restic command
+  ansible.builtin.template:
+    src: restic.j2
+    dest: /usr/local/bin/restic
+    owner: root
+    mode: "0755"
+
+- name: Deploy the restic backup script
+  ansible.builtin.copy:
+    src: restic-backup.sh
+    dest: /usr/local/bin/restic-backup.sh
+    owner: root
+    mode: "0755"
+
+- name: Deploy the restic backup units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: /etc/systemd/system/{{ item }}
+    owner: root
+    mode: "0644"
+  loop:
+    - restic-backup.service
+    - restic-backup.timer
+  notify: Reload systemd
+
+- name: Load the restic backup units
+  ansible.builtin.meta: flush_handlers
+
+# restic exits with 10 when the repository does not exist yet.
+- name: Read whether the restic repository exists
+  ansible.builtin.command: /usr/local/bin/restic cat config
+  register: base_setup_restic_config
+  changed_when: false
+  failed_when: base_setup_restic_config.rc not in [0, 10]
+
+- name: Create the restic repository
+  ansible.builtin.command: /usr/local/bin/restic init
+  when: base_setup_restic_config.rc == 10
+  changed_when: true
+
+# A backup that never succeeds then reads as stale 30 h after the first deploy.
+- name: Seed the restic backup metric
+  ansible.builtin.copy:
+    dest: "{{ base_setup_textfile_dir }}/restic-backup.prom"
+    content: "restic_backup_last_success_timestamp_seconds{target=\"restic\"} {{ ansible_facts.date_time.epoch }}\n"
+    force: false
+    owner: root
+    mode: "0644"
+    setype: container_ro_file_t
+
+- name: Enable the restic backup timer
+  ansible.builtin.systemd_service:
+    name: restic-backup.timer
+    enabled: true
+    state: started

@@ -135,6 +135,8 @@ it instead of merging, so a host that overrides one repeats all its keys.
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
+| `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
+| `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
@@ -147,9 +149,22 @@ that target.
 ## Backup and restore
 
 Each night `btrfs-snapshot@<service>.timer` takes a read-only snapshot. The
-Nextcloud snapshot holds a database dump from just before it. Each target in
-`base_setup_backup_targets` receives the snapshots with an incremental `btrfs
-send`.
+Nextcloud snapshot holds a database dump from just before it.
+
+- Each target in `base_setup_backup_targets` receives the snapshots with an
+  incremental `btrfs send`. A target is fast to restore from, but the host can
+  delete it.
+- With `base_setup_restic_repository` set, `restic-backup.timer` copies the
+  newest snapshot of every service to a restic repository. restic encrypts,
+  deduplicates and sends only the changes.
+
+The restic repository survives a compromised host only if its server is
+append-only: the host's key adds snapshots but removes none. `rest-server
+--append-only` does this, and so do hosted services with an append-only mode.
+Remove old snapshots from another machine, with a key that may delete:
+`restic forget --keep-daily 30 --keep-monthly 12 --prune`.
+`/usr/local/bin/restic` runs restic on the host with the host's repository,
+for example `run0 restic snapshots`.
 
 ### Restore a service
 
@@ -166,7 +181,17 @@ ansible-playbook site.yml -l <host>
 ```
 
 The first line restores from a local snapshot, the second from a backup
-target. Delete the `before-restore-*` copy when the service works again.
+target. From restic, restore into a new subvolume first:
+
+```bash
+S=/var/services/snapshots/nextcloud/restic-2026-09-29
+run0 btrfs subvolume create $S
+run0 restic restore latest:/data/nextcloud --target $S
+run0 btrfs-restore.sh /var/services/nextcloud $S
+ansible-playbook site.yml -l <host>
+```
+
+Delete the `before-restore-*` copy when the service works again.
 
 On a new host, deploy first, so the users, their uids and the subvolumes
 exist. Then restore each service and deploy again. A nested subvolume is in

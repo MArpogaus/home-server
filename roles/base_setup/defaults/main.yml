@@ -30,3 +30,12 @@ base_setup_iscsi_device: >-
   /dev/disk/by-path/ip-{{ base_setup_iscsi_portal }}:3260-iscsi-{{ base_setup_iscsi_target }}-lun-{{ base_setup_iscsi_lun }}
 base_setup_luks_keyfile: /etc/luks/backup.key
 base_setup_luks_passphrase: ""
+
+# A restic repository for the newest snapshots. Empty: none.
+# README.md, "Backup and restore".
+base_setup_restic_repository: ""
+base_setup_restic_password: ""
+# Backend settings, such as RESTIC_REST_USERNAME and RESTIC_REST_PASSWORD.
+base_setup_restic_env: {}
+base_setup_restic_image: "docker.io/restic/restic:0.19.1"
+base_setup_restic_schedule: "*-*-* 01:00"

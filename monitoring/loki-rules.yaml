@@ -6,7 +6,7 @@ groups:
         expr: |
           sum by (unit) (
             count_over_time(
-              {job="systemd-journal", syslog_identifier="systemd", emitter_uid="0", unit=~"btrfs-(backup|snapshot)@.*\\.service"}
+              {job="systemd-journal", syslog_identifier="systemd", emitter_uid="0", unit=~"btrfs-(backup|snapshot)@.*\\.service|restic-backup\\.service"}
                 |~ "(?i)failed with result|dependency failed for" [6h]
             )
           ) > 0
