@@ -67,7 +67,7 @@ ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
 
 The deploy and the functional test escalate with `run0`, which needs the root
-gate open: `ssh -t core@<address> root-gate on` asks for core's password once.
+gate open: `root-gate on` on the host asks for core's password once.
 The gate closes after 2 h. `--timer <time>` sets another time, and
 `--no-timer` keeps it open until the next boot. `root-gate off` closes it at
 once.
@@ -81,15 +81,16 @@ and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 
 ```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
-ssh -t -p 2222 -i test/coreos_key core@127.0.0.1 root-gate on        # terminal 2, after the rebase
+ssh -t -p 2222 -i test/coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+  core@127.0.0.1 root-gate on                                        # terminal 2, after the rebase
 ansible-playbook site.yml -l test && ./functional_test.sh test
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
 
 `--fresh` deletes the disk and its `base` snapshot. For a controller in a
-container, start the VM with `--listen <address>` and add
-`-e ansible_host=<address>` to both commands.
+container, start the VM with `--listen <address>`. Then use `<address>` in the
+`ssh` line and add `-e ansible_host=<address>` to the playbook and the test.
 
 ### Real host
 
@@ -101,7 +102,7 @@ lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
 host uses the agent. `build.sh` authorises the smartcard key in the agent and
 asks `mkpasswd` for core's password, which the console and `root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
-host key fingerprints; compare them with `ssh-keyscan -l <address>` before the
+host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen -lf -` before the
 key goes into `known_hosts`.
 
 ```bash
@@ -114,7 +115,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
 ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
-ssh -t core@<address> root-gate on
+ssh -t -o UserKnownHostsFile=../home-server-secrets/ssh/known_hosts core@<address> root-gate on
 ansible-playbook site.yml -l <host>
 ./functional_test.sh <host>
 ```
