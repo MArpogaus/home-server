@@ -83,6 +83,7 @@
           stage={{ quadlet_service_stage.path | quote }}
           cp -r {{ (role_path ~ '/files/container.d') | quote }} "$stage/"
           cp -r {{ (service_repo ~ '/quadlets/.') | quote }} "$stage/"
+          printf '[Container]\nPod=%s.pod\n' {{ service_name | quote }} > "$stage/container.d/pod.conf"
           find "$stage" -name '*.j2' -delete
           {% for name, size in quadlet_service_memory.items() %}
           mkdir -p "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d') | quote }}
