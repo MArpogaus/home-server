@@ -98,7 +98,8 @@ host uses the agent.
 ```bash
 cd ignition
 podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
-  quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
+  quay.io/coreos/coreos-installer:release@sha256:2c94387e76ae351a4183f29707fd7be57a9290675524391bdb17b40de1e088ff \
+  download -s stable -p metal -f iso
 ./build.sh --platform ../platform/secureblue.bu ign    # render config.ign; read it
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
