@@ -133,7 +133,7 @@ one of them repeats all its entries.
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
-| `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
+| `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
