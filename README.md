@@ -244,6 +244,7 @@ recognize:download-models`.
    repository: `git submodule add <its URL> services/<name>`.
 2. Add `name`, `uid` and, for a pod that the proxy or another pod reaches,
    `port` to `base_setup_services` in `inventory/group_vars/homeserver.yml`.
+   `groups` adds host groups, such as `systemd-journal`.
    The `uid` never changes after the first deploy, because it sets the subuid
    range that owns the service's files.
 3. For a public service, set `<name>_service_hostname`, add an entry for
@@ -279,7 +280,8 @@ The ports in use:
 - **Container output goes through `passthrough` where it can.** conmon's
   journald driver files every stderr line as `err`. With
   `LogDriver=passthrough` the unit's priority applies. Each service sets it in
-  its own `container.d/`; bunker cannot and keeps journald.
+  its own `container.d/`. Bunker keeps journald:
+  `home-server-bunker/README.md`, "Specifics".
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The restic image is the
   exception: it runs as root, so a digest pins it, and Renovate updates it.
