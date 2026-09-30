@@ -104,7 +104,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
-ssh-keyscan -H <host> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
+ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
 ansible-playbook site.yml -l <host>
 ./functional_test.sh <host>
 ```
