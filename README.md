@@ -27,8 +27,7 @@ git clone <the private secrets repo> home-server-secrets
 - **Host and platform.** The roles target stock Fedora CoreOS, installed from
   `ignition/`. SecureBlue's steps are platform files: `platform/secureblue.bu`
   for Ignition, and `platform/secureblue.yml`, which `site.yml` runs as
-  `host_tasks_pre` before `base_setup`. The host is named after its inventory
-  entry.
+  `host_tasks_pre` before `base_setup`. The inventory entry names the host.
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
@@ -38,8 +37,7 @@ git clone <the private secrets repo> home-server-secrets
 - **Snapshots and backup targets.** The finished snapshot of a service starts
   `btrfs-backup@<target>.service`. A target is a LUKS2 container with Btrfs
   (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
-  at `/var/backup/<name>`. A nested subvolume is not in a snapshot. "Backup and
-  restore" has the whole flow.
+  at `/var/backup/<name>`. "Backup and restore" has the whole flow.
 - **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
   rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots
   after the last backup, or at 03:00.
@@ -270,9 +268,9 @@ The ports in use:
   its own `container.d/`; bunker cannot and keeps journald.
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The restic image is the
-  exception: it runs as root, so it is pinned by digest, and Renovate updates
-  it. The reboot uses
-  `--check-inhibitors=yes`, so it never interrupts a backup or a dump.
+  exception: it runs as root, so a digest pins it, and Renovate updates it.
+  The reboot uses `--check-inhibitors=yes`, so it never interrupts a backup or
+  a dump.
 - **The secrets repository is a second inventory.** `ansible.cfg` lists it
   after this one, so its `group_vars/` and `host_vars/` win over this
   repository's, and Ansible decrypts them by itself.
@@ -330,7 +328,7 @@ SELinux exceptions:
 | `JobStale` | critical | A snapshot, backup or dump (a `*_last_success` textfile metric) has not succeeded for 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
 | `ScheduledJobFailed` | warning | A snapshot, backup or scrub unit failed in the last 6 hours |
-| `AutoRebootBlocked` | warning | The staged-update reboot was refused twice in 50 hours |
+| `AutoRebootBlocked` | warning | The staged-update reboot failed twice in 50 hours |
 | `SshLogin` | info | An SSH key login succeeded |
 | `SshLoginFailed` | warning | More than 5 failed SSH logins in 15 minutes |
 | `SelinuxDenials` | warning | More than 20 enforced SELinux denials in 15 minutes |
