@@ -139,6 +139,8 @@
     - btrfs-snapshot@.service
     - btrfs-snapshot@.timer
     - btrfs-backup@.service
+    - btrfs-scrub@.service
+    - btrfs-scrub@.timer
     - auto-reboot-staged.service
     - auto-reboot-staged.timer
   notify: Reload systemd
@@ -189,6 +191,23 @@
     enabled: true
     state: started
   loop: "{{ base_setup_services }}"
+
+# A scrub covers the whole filesystem and needs it writable: /sysroot is
+# read-only, /var is the same filesystem.
+- name: Name a scrub timer after each path, the host and each backup target
+  ansible.builtin.command:
+    argv: >-
+      {{ ['systemd-escape', '--path', '--template=btrfs-scrub@.timer', '/var']
+         + base_setup_backup_targets | map(attribute='name') | map('regex_replace', '^', base_setup_backup_root ~ '/') | list }}
+  register: base_setup_scrub_timers
+  changed_when: false
+
+- name: Enable the monthly scrubs
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ base_setup_scrub_timers.stdout.split() }}"
 
 - name: Enable linger for service users
   ansible.builtin.command:

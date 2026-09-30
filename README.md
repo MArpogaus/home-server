@@ -157,6 +157,11 @@ Nextcloud snapshot holds a database dump from just before it.
   newest snapshot of every service to a restic repository. restic encrypts,
   deduplicates and sends only the changes.
 
+Once a month `btrfs-scrub@<path>.timer` scrubs the host (through `/var`, as
+`/sysroot` is read-only) and each target. A scrub reads every block and
+checks it against its checksum. An error it cannot repair fails the unit, and
+`ScheduledJobFailed` fires.
+
 The restic repository survives a compromised host only if its server is
 append-only: the backend credentials in `base_setup_restic_env` add data but
 delete none. `rest-server --append-only` does this, and so do hosted services
@@ -301,7 +306,6 @@ Known gaps:
   passphrase. `test/start_vm.py` creates it when it is missing.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
-- No `btrfs scrub` runs on a schedule.
 
 SELinux exceptions:
 
@@ -318,7 +322,7 @@ SELinux exceptions:
 |---|---|---|
 | `JobStale` | critical | A snapshot, backup or dump (a `*_last_success` textfile metric) has not succeeded for 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
-| `ScheduledJobFailed` | warning | A snapshot or backup unit failed in the last 6 hours |
+| `ScheduledJobFailed` | warning | A snapshot, backup or scrub unit failed in the last 6 hours |
 | `AutoRebootBlocked` | warning | The staged-update reboot was refused twice in 50 hours |
 | `SshLogin` | info | An SSH key login succeeded |
 | `SshLoginFailed` | warning | More than 5 failed SSH logins in 15 minutes |
