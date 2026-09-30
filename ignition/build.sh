@@ -81,8 +81,7 @@ echo "Wrote ${IGNITION}"
 case "${MODE}" in
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
-	# The ISO embeds config.ign.
-	podman run --pull=always --rm --security-opt label=disable --umask 0077 \
+	podman run --pull=always --rm --security-opt label=disable \
 		-v "${SCRIPT_DIR}":/data -v "${SRC_DIR}":/iso -w /data \
 		"${INSTALLER_IMAGE}" \
 		iso customize --force --dest-ignition config.ign \
