@@ -137,7 +137,7 @@
     - auto-reboot-staged.timer
   notify: Reload systemd
 
-- name: Deploy the snapshot and backup scripts
+- name: Deploy the snapshot, backup and restore scripts
   ansible.builtin.copy:
     src: "{{ item }}"
     dest: /usr/local/bin/{{ item }}
@@ -145,6 +145,7 @@
   loop:
     - btrfs-snapshot.sh
     - btrfs-backup.sh
+    - btrfs-restore.sh
 
 - name: Load the new units
   ansible.builtin.meta: flush_handlers

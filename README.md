@@ -144,6 +144,35 @@ Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also runs a real backup to
 that target.
 
+## Backup and restore
+
+Each night `btrfs-snapshot@<service>.timer` takes a read-only snapshot. The
+Nextcloud snapshot holds a database dump from just before it. Each target in
+`base_setup_backup_targets` receives the snapshots with an incremental `btrfs
+send`.
+
+### Restore a service
+
+`btrfs-restore.sh` stops the service's pod and moves its live subvolume to
+`snapshots/<service>/before-restore-<time>`. It then makes a writable copy
+of the snapshot the live subvolume. Nested subvolumes, such as Nextcloud's
+`data/custom_apps`, come over from the old state. The deploy starts the
+service again.
+
+```bash
+run0 btrfs-restore.sh /var/services/nextcloud /var/services/snapshots/nextcloud/2026-09-29
+run0 btrfs-restore.sh /var/services/nextcloud /var/backup/nas/nextcloud/2026-09-29
+ansible-playbook site.yml -l <host>
+```
+
+The first line restores from a local snapshot, the second from a backup
+target. Delete the `before-restore-*` copy when the service works again.
+
+On a new host, deploy first, so the users, their uids and the subvolumes
+exist. Then restore each service and deploy again. A nested subvolume is in
+no backup: install the Nextcloud apps of `custom_apps` again with `occ
+app:install`.
+
 ## Adding a service
 
 1. Copy `home-server-template` as its `README.md` says, and add the new
@@ -225,7 +254,7 @@ Known gaps:
   passphrase. `test/start_vm.py` creates it when it is missing.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
-- No script restores a backup, and no `btrfs scrub` runs on a schedule.
+- No `btrfs scrub` runs on a schedule.
 
 SELinux exceptions:
 
