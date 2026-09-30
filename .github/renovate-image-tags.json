@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Container image tags in the role defaults, with the digest of the pinned restic image, and the digest-pinned Ignition tools in ignition/build.sh. Dependabot covers the actions and the pre-commit hooks.",
+  "description": "Container image tags in the role defaults, with the digest of the pinned restic image, and the digest-pinned Ignition tools in ignition/build.sh and README.md. Dependabot covers the actions and the pre-commit hooks.",
   "extends": [
     "config:recommended",
     ":semanticCommitTypeAll(chore)"
@@ -29,7 +29,8 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|/)ignition/build\\.sh$/"
+        "/(^|/)ignition/build\\.sh$/",
+        "/^README\\.md$/"
       ],
       "matchStrings": [
         "(?<depName>quay\\.io/coreos/[a-z-]+):(?<currentValue>[^@\\s\"]+)@(?<currentDigest>sha256:[0-9a-f]{64})"

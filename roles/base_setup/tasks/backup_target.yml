@@ -26,5 +26,5 @@
 
 - name: Wait for the LUN to appear
   ansible.builtin.wait_for:
-    path: "{{ base_setup_iscsi_device }}"
+    path: /dev/disk/by-path/ip-{{ base_setup_iscsi_portal }}:3260-iscsi-{{ base_setup_iscsi_target }}-lun-0
     timeout: 60

@@ -83,6 +83,7 @@
           stage={{ quadlet_service_stage.path | quote }}
           cp -r {{ (role_path ~ '/files/container.d') | quote }} "$stage/"
           cp -r {{ (service_repo ~ '/quadlets/.') | quote }} "$stage/"
+          printf '[Container]\nPod=%s.pod\n' {{ service_name | quote }} > "$stage/container.d/pod.conf"
           find "$stage" -name '*.j2' -delete
           {% for name, size in quadlet_service_memory.items() %}
           mkdir -p "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d') | quote }}
@@ -90,9 +91,6 @@
           {% endfor %}
           {% for f in quadlet_service_extra_files %}
           mkdir -p "$(dirname "$stage"/{{ f.dest | quote }})"
-          {% if f.src is defined %}
-          cp -r {{ f.src | quote }} "$stage"/{{ f.dest | quote }}
-          {% endif %}
           {% endfor %}
       delegate_to: localhost
       become: false
@@ -104,7 +102,7 @@
         dest: "{{ quadlet_service_stage.path }}/{{ item.dest }}"
         mode: "0644"
       diff: false
-      loop: "{{ quadlet_service_extra_files | selectattr('content', 'defined') | list }}"
+      loop: "{{ quadlet_service_extra_files }}"
       loop_control:
         label: "{{ item.dest }}"
       delegate_to: localhost

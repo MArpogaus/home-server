@@ -27,19 +27,17 @@ git clone <the private secrets repo> home-server-secrets
 - **Host and platform.** The roles target stock Fedora CoreOS, installed from
   `ignition/`. SecureBlue's steps are platform files: `platform/secureblue.bu`
   for Ignition, and `platform/secureblue.yml`, which `site.yml` runs as
-  `host_tasks_pre` before `base_setup`. The host is named after its inventory
-  entry.
+  `host_tasks_pre` before `base_setup`. The inventory entry names the host.
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
-  `uid * base_setup_subuid_range_size + 100000`. `site.yml` then runs the
+  `uid * 65536 + 100000`. `site.yml` then runs the
   service role from `services/<name>/ansible-role`, which calls
   `quadlet_service`. Services reach each other through host-published ports.
 - **Snapshots and backup targets.** The finished snapshot of a service starts
   `btrfs-backup@<target>.service`. A target is a LUKS2 container with Btrfs
   (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
-  at `/var/backup/<name>`. A nested subvolume is not in a snapshot. "Backup and
-  restore" has the whole flow.
+  at `/var/backup/<name>`. "Backup and restore" has the whole flow.
 - **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
   rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots
   after the last backup, or at 03:00.
@@ -62,7 +60,6 @@ mkdir -p -m 700 ~/.config/home-server
 
 S=../home-server-secrets                   # a new secrets repository
 git init -q $S && cp -r secrets.example/. $S/ && mkdir -p $S/ssh
-printf 'group_vars/*.yml diff=ansible-vault\nhost_vars/*.yml diff=ansible-vault\n' > $S/.gitattributes
 # fill in the values, then:
 ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 ```
@@ -93,17 +90,20 @@ needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
 `secrets.example/host_vars/test.yml` to
 `../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
 lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
-host uses the agent.
+host uses the agent. `build.sh` authorises the smartcard key in the agent and
+asks `mkpasswd` for a console password. `SSH_PUBLIC_KEY` and `PASSWORD_HASH`
+set them instead.
 
 ```bash
 cd ignition
 podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
-  quay.io/coreos/coreos-installer:release download -s stable -p metal -f iso
+  quay.io/coreos/coreos-installer:release@sha256:2c94387e76ae351a4183f29707fd7be57a9290675524391bdb17b40de1e088ff \
+  download -s stable -p metal -f iso
 ./build.sh --platform ../platform/secureblue.bu ign    # render config.ign; read it
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
-ssh-keyscan -H <host> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
+ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
 ansible-playbook site.yml -l <host>
 ./functional_test.sh <host>
 ```
@@ -115,10 +115,10 @@ Every service takes the same kinds of variables:
 defaults are generic; this deployment's own settings, such as the geo
 allowlist and the phone region, are in `inventory/group_vars/homeserver.yml`.
 In the secrets repository, `group_vars/homeserver.yml` holds what every host
-shares, and `host_vars/<host>.yml` one host's credentials and overrides.
-`nextcloud_service_config` and `bunker_service_config` live in
-`inventory/group_vars/homeserver.yml`. A dict set in a second file replaces
-it instead of merging, so a host that overrides one repeats all its keys.
+shares, and `host_vars/<host>.yml` one host's credentials and overrides. The
+inventory sets `base_setup_services`, `bunker_service_sites`,
+`nextcloud_service_config` and `bunker_service_config`. A host that overrides
+one of them repeats all its entries.
 
 | Variable | Required | Controls |
 |---|---|---|
@@ -131,9 +131,9 @@ it instead of merging, so a host that overrides one repeats all its keys.
 | ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
-| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no off-box backup; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
+| `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
-| `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | An iSCSI LUN; the deploy logs in to it |
+| `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `host_tasks_pre` | no | A task file that runs before `base_setup` |
@@ -271,9 +271,9 @@ The ports in use:
   its own `container.d/`; bunker cannot and keeps journald.
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The restic image is the
-  exception: it runs as root, so it is pinned by digest, and Renovate updates
-  it. The reboot uses
-  `--check-inhibitors=yes`, so it never interrupts a backup or a dump.
+  exception: it runs as root, so a digest pins it, and Renovate updates it.
+  The reboot uses `--check-inhibitors=yes`, so it never interrupts a backup or
+  a dump.
 - **The secrets repository is a second inventory.** `ansible.cfg` lists it
   after this one, so its `group_vars/` and `host_vars/` win over this
   repository's, and Ansible decrypts them by itself.
@@ -311,6 +311,9 @@ Known gaps:
 - `btrfs-restore.sh` stops only the service's pod. A compromised service user
   whose own units keep running can swap a directory for a symlink while the
   script moves a nested subvolume.
+- The `monitoring` user is in `systemd-journal` and reads the whole host
+  journal. Alloy redacts only what it sends to Loki, so a compromised
+  monitoring service reads tokens that other units log.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 
@@ -318,11 +321,15 @@ SELinux exceptions:
 
 - `platform/secureblue.yml` runs `ujust set-container-userns on`, because
   SecureBlue's `harden_container_userns` blocks rootless Podman.
-- iscsid needs a permissive `iscsid_t`, which the host task file sets. A
+- iscsid needs a permissive `iscsid_t`, which `platform/secureblue.yml` sets. A
   constraint, not an allow rule, stops its netlink socket.
 - `/usr/local/bin/restic` runs its root container with `label=disable` and
   Podman's default capabilities, so it can read and restore the files of every
   service.
+- Alloy runs as `container_logreader_t` with a local policy module:
+  `home-server-monitoring/README.md`, "Specifics".
+- `btrfs-backup.sh` labels the root of each backup target `container_file_t`,
+  so node-exporter can read its free space.
 
 ## Alerts
 
@@ -331,17 +338,16 @@ SELinux exceptions:
 | `JobStale` | critical | A snapshot, backup or dump (a `*_last_success` textfile metric) has not succeeded for 30 hours |
 | `BackupTargetLow` | warning | A backup target has less than 10 % free space |
 | `ScheduledJobFailed` | warning | A snapshot, backup or scrub unit failed in the last 6 hours |
-| `AutoRebootBlocked` | warning | The staged-update reboot was refused twice in 50 hours |
+| `AutoRebootBlocked` | warning | The staged-update reboot failed twice in 50 hours |
 | `SshLogin` | info | An SSH key login succeeded |
 | `SshLoginFailed` | warning | More than 5 failed SSH logins in 15 minutes |
 | `SelinuxDenials` | warning | More than 20 enforced SELinux denials in 15 minutes |
 
 ## LLM coding tools
 
-This project is developed with LLM-based coding tools. They write most of the
-code and documentation. The maintainer sets the goals and the design, reviews
-every change and is responsible for it. Changes are tested on a VM before they
-reach a host.
+LLM-based coding tools write most of the code and documentation of this
+project. The maintainer sets the goals and the design, reviews every change and
+is responsible for it. Each change runs on a VM before it reaches a host.
 
 ## License
 

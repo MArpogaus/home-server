@@ -27,7 +27,19 @@ NEXTCLOUD_PORT=${V[8]}
 NTFY_PORT=${V[9]}
 
 CTL_DIR=$(mktemp -d)
-trap 'rm -rf "${CTL_DIR}"' EXIT
+HOLD=/run/systemd/system/auto-reboot-staged.service.d/functional-test.conf
+# The host waits for the snapshots and backups that the test started, so a lost
+# connection does not keep the hold.
+RELEASE="while [ -n \"\$(systemctl list-jobs --no-legend 'btrfs-snapshot@*' 'btrfs-backup@*')\" ]; do sleep 10; done
+rm -rf ${HOLD%/*}
+systemctl daemon-reload"
+release_hold() {
+  [[ -n "${HELD-}" ]] || return 0
+  run_root "systemd-run --quiet --collect --unit=functional-test-release sh -c \"\$(echo $(b64 "${RELEASE}") | base64 -d)\" && echo released" |
+    grep -q released ||
+    echo "WARNING: the staged reboot is still held; on the host run: run0 rm -r ${HOLD%/*} && run0 systemctl daemon-reload" >&2
+}
+trap 'release_hold; rm -rf "${CTL_DIR}"' EXIT
 SSH=(ssh -p "${TARGET_PORT}" "${SSH_OPTS[@]}" -o LogLevel=ERROR
      -o ControlMaster=auto -o ControlPersist=60s -o ControlPath="${CTL_DIR}/%C"
      "core@${TARGET_HOST}")
@@ -62,6 +74,17 @@ run_user() {
   remote "${RUN0} --user=$1 -- /usr/bin/bash -c \"\$(echo $(b64 "$2") | base64 -d)\""
 }
 
+[[ "$(remote true)" != __HOST_UNREACHABLE__ ]] \
+  || { echo "ERROR: cannot reach core@${TARGET_HOST}:${TARGET_PORT}" >&2; exit 1; }
+
+# The snapshot and backup checks start units whose OnSuccess= chain ends in
+# auto-reboot-staged.service. A runtime drop-in with a condition that never
+# holds makes systemd skip it; a mask would lose to the unit in /etc.
+# From here on a release runs at exit: it is harmless when nothing was held.
+HELD=1
+run_root "systemctl stop functional-test-release.service 2>/dev/null; mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload && echo held" |
+  grep -q held || { echo "ERROR: cannot hold the staged reboot" >&2; exit 1; }
+
 # As core, with `lq <path> [curl args]` querying Loki through Grafana's
 # datasource proxy. The admin credential travels on ssh stdin.
 GRAFANA_CFG=$(printf 'user = "admin:%s"\n' "${V[6]}")
@@ -84,9 +107,6 @@ check_output() { expect "$1" "$(run_root "$2")" "$3"; }
 RULES_HEALTH=$'grep -o \'"health":"[a-z]*"\' | awk \'/err/{e++} /ok/{o++} END{print "err=" e+0 " ok=" o+0}\''
 check_user_output() { expect "$2" "$(run_user "$1" "$3")" "$4"; }
 check_loki() { expect "$1" "$(run_loki "$2")" "$3"; }
-
-[[ "$(remote true)" != __HOST_UNREACHABLE__ ]] \
-  || { echo "ERROR: cannot reach core@${TARGET_HOST}:${TARGET_PORT}" >&2; exit 1; }
 
 echo "=== Functional tests ==="
 echo ""

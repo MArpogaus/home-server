@@ -51,7 +51,8 @@
   when: base_setup_restic_config.rc == 10
   changed_when: true
 
-# A backup that never succeeds then reads as stale 30 h after the first deploy.
+# The deploy time stands in for the first success, so a job that never
+# succeeds alerts 30 h after the deploy.
 - name: Seed the restic backup metric
   ansible.builtin.copy:
     dest: "{{ base_setup_textfile_dir }}/backup-restic.prom"
