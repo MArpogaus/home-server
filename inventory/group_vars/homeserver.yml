@@ -24,7 +24,7 @@ base_setup_services:
 nextcloud_service_config:
   system:
     default_phone_region: DE
-# The app ceiling and the host's memory history leave room for 12.
+# The app's memory ceiling, not the worker count, bounds PHP memory, so 12 fit.
 nextcloud_service_php_max_children: 12
 bunker_service_config:
   WHITELIST_COUNTRY: DE CH AT

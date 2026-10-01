@@ -191,8 +191,8 @@ check_loki "Every Loki alert rule evaluates" \
   "^err=0 ok=[1-9]"
 
 echo "--- HTTP/HTTPS ---"
-# DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server:
-# with TLS configured, BunkerWeb redirects HTTP to HTTPS, so 301 is the pass.
+# DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server.
+# With TLS, BunkerWeb redirects HTTP to HTTPS with 301 or 308.
 check_output "HTTP redirects to HTTPS" \
   "curl -s -o /dev/null -w %{http_code} -H 'Host: ${SERVER_NAME}' http://127.0.0.1:80" "30[18]"
 # status.php, not /, which redirects to /login. Proves TLS, the proxy's site,
