@@ -116,6 +116,10 @@ echo "--- Btrfs Subvolumes ---"
 check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
 
+echo "--- Egress ---"
+check_output "The service users' egress rules are loaded" \
+  "nft list table inet service_egress | grep -c reject" "^2$"
+
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so the data check catches a missing z or Z
 # on a fresh host only.
