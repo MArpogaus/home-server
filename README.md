@@ -140,7 +140,7 @@ one of them repeats all its entries.
 | `ntfy_service_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
 | Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration" |
-| ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
+| `ntfy_service_users` | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
