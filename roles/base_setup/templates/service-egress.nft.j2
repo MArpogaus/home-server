@@ -1,0 +1,17 @@
+# The service users reach the internet and the host loopback, but no private
+# network: pasta opens every container connection on the host as its user.
+# ct state new leaves the replies of the published ports alone.
+table inet service_egress
+delete table inet service_egress
+table inet service_egress {
+	set users {
+		type uid
+		elements = { {{ base_setup_services | map(attribute='uid') | join(', ') }} }
+	}
+
+	chain output {
+		type filter hook output priority filter; policy accept;
+		meta skuid @users ct state new ip daddr { 10.0.0.0/8, 100.64.0.0/10, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4, 255.255.255.255 } counter reject
+		meta skuid @users ct state new ip6 daddr { fc00::/7, fe80::/10, ff00::/8 } counter reject
+	}
+}

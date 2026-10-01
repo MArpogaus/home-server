@@ -116,6 +116,10 @@ echo "--- Btrfs Subvolumes ---"
 check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
 
+echo "--- Egress ---"
+check_output "The service users' egress rules are loaded" \
+  "nft list table inet service_egress | grep -c reject" "^2$"
+
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so the data check catches a missing z or Z
 # on a fresh host only.
@@ -188,6 +192,11 @@ check_output "HTTP redirects to HTTPS" \
 # whitelist, so the WAF checks are not part of it. A wrong upstream gives 502.
 check_output "HTTPS reaches Nextcloud through the proxy" \
   "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/status.php" \
+  '"installed":true'
+# Through the host's own LAN address the reply goes to a private address, as
+# for a client on the LAN.
+check_output "HTTPS answers a client on the LAN" \
+  "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2) https://${SERVER_NAME}/status.php" \
   '"installed":true'
 
 if [[ " ${SERVICES} " == *" ntfy "* ]]; then
