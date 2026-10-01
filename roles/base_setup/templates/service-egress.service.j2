@@ -1,0 +1,14 @@
+[Unit]
+Description=Keep the service users off private networks
+DefaultDependencies=no
+Before=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/nft -f /etc/nftables/service-egress.nft
+ExecStop=/usr/bin/nft delete table inet service_egress
+
+[Install]
+WantedBy=multi-user.target
