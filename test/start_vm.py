@@ -112,7 +112,12 @@ def ensure_disk(fresh):
             fail(f"{DISK_XZ} does not match FCOS_SHA256; deleted it")
         print("Extracting disk image")
         subprocess.run(["unxz", "-k", DISK_XZ], check=True)
-        subprocess.run(["qemu-img", "resize", DISK, DISK_SIZE], check=True)
+        # A disk left at its download size fills up on the first deploy.
+        try:
+            subprocess.run(["qemu-img", "resize", DISK, DISK_SIZE], check=True)
+        except (OSError, subprocess.CalledProcessError):
+            os.remove(DISK)
+            raise
     print(f"Disk: {os.path.getsize(DISK) // 1024 // 1024} MB")
 
 
