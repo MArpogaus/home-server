@@ -328,9 +328,9 @@ Covered:
   (`home-server-template/README.md`, "Role contract"), except the signed ones
   that the OS image's own `policy.json` admits.
 - A service user opens no connection to a private, multicast or broadcast
-  IPv4 address, or to an IPv6 ULA, link-local or multicast address, the NAS
-  included.
-  `service-egress.service` loads an nftables rule on the uids of
+  IPv4 address. The same applies to an IPv6 ULA, link-local or multicast
+  address. This includes the NAS.
+  `service-egress.service` loads an nftables rule on the uids and subuids of
   `base_setup_services`. pasta opens every container connection on the host
   as its user, so the rule covers every container. The internet and the host
   loopback stay open.

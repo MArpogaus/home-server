@@ -4,9 +4,11 @@
 table inet service_egress
 delete table inet service_egress
 table inet service_egress {
+	# Each user with its subuid range, which a container on the host network uses.
 	set users {
 		type uid
-		elements = { {{ base_setup_services | map(attribute='uid') | join(', ') }} }
+		flags interval
+		elements = { {% for s in base_setup_services %}{{ s.uid }}, {{ s.uid | int * 65536 + 100000 }}-{{ s.uid | int * 65536 + 165535 }}{{ '' if loop.last else ', ' }}{% endfor %} }
 	}
 
 	chain output {
