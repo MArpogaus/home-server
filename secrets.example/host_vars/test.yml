@@ -7,8 +7,8 @@
 nextcloud_service_db_password: ""
 nextcloud_service_admin_password: ""
 # The phone logs in as ntfy; Alertmanager posts as alertmanager; coding agents
-# use their own agent-<name> topics. A token is tk_ plus 29 lowercase letters
-# or digits.
+# use their own agent-<name> topics. Drop agent without a coding agent.
+# home-server-ntfy/README.md gives the form of a token.
 ntfy_service_users:
   ntfy:
     password: ""
