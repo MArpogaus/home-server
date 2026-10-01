@@ -8,7 +8,6 @@ Wants=network-pre.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/bin/nft -f /etc/nftables/service-egress.nft
-ExecStop=/usr/bin/nft delete table inet service_egress
 
 [Install]
 WantedBy=multi-user.target

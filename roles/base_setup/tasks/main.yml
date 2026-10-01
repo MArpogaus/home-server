@@ -248,7 +248,9 @@
     dest: /etc/nftables/service-egress.nft
     owner: root
     mode: "0600"
+    validate: nft -c -f %s
   register: base_setup_egress_rules
+  when: base_setup_services | length > 0
 
 - name: Deploy the unit that loads them
   ansible.builtin.template:
@@ -257,6 +259,7 @@
     owner: root
     mode: "0644"
   register: base_setup_egress_unit
+  when: base_setup_services | length > 0
 
 - name: Load the egress rules at boot and now
   ansible.builtin.systemd_service:
@@ -264,6 +267,7 @@
     enabled: true
     daemon_reload: "{{ base_setup_egress_unit is changed }}"
     state: "{{ 'restarted' if base_setup_egress_rules is changed or base_setup_egress_unit is changed else 'started' }}"
+  when: base_setup_services | length > 0
 
 - name: Let unprivileged users bind ports >= 80
   ansible.posix.sysctl:
