@@ -327,6 +327,11 @@ Covered:
 - `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract"), except the signed ones
   that the OS image's own `policy.json` admits.
+- A service user reaches no private network, the NAS included.
+  `service-egress.service` loads an nftables rule on the uids of
+  `base_setup_services`. pasta opens every container connection on the host
+  as its user, so the rule covers every container. The internet and the host
+  loopback stay open.
 - SSH checks a real host against `ssh/known_hosts` of the secrets repository.
   Only the inventory entry `test` skips the check.
 - Credentials in the secrets repository are Vault-encrypted. Keep a copy of
@@ -352,8 +357,6 @@ Known gaps:
   monitoring service reads tokens that other units log.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
-- pasta filters no outgoing traffic, so every container reaches the LAN from
-  this host's address, the NAS included.
 
 SELinux exceptions:
 
