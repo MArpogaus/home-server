@@ -116,13 +116,17 @@ echo "--- Btrfs Subvolumes ---"
 check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
 
+LAN_IP="\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2)"
+
 echo "--- Egress ---"
-# curl exits 7 when the rule refuses the connection to the host's own LAN
-# address. A container on the host network runs as a subuid.
-LAN_CURL="curl -sk -o /dev/null --max-time 5 https://\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2)/"
-check_user_output nextcloud "A service user reaches no private address" "${LAN_CURL}; echo \$?" "^7$"
+# bash exits 1 when the rule refuses the connection to sshd on the host's own
+# LAN address. A container on the host network runs as a subuid.
+# shellcheck disable=SC2016 # expands on the host
+SSH_CONNECT='timeout 5 bash -c "</dev/tcp/$ip/22" 2>/dev/null; echo $?'
+check_user_output nextcloud "A service user reaches no private address" \
+  "ip=${LAN_IP}; ${SSH_CONNECT}" "^1$"
 check_user_output nextcloud "A subuid reaches no private address" \
-  "podman unshare setpriv --reuid 1000 --regid 1000 --clear-groups ${LAN_CURL}; echo \$?" "^7$"
+  "ip=${LAN_IP}; podman unshare setpriv --reuid 1000 --regid 1000 --clear-groups ${SSH_CONNECT}" "^1$"
 
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so the data check catches a missing z or Z
@@ -200,7 +204,7 @@ check_output "HTTPS reaches Nextcloud through the proxy" \
 # Through the host's own LAN address the reply goes to a private address, as
 # for a client on the LAN.
 check_output "HTTPS answers a client on the LAN" \
-  "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2) https://${SERVER_NAME}/status.php" \
+  "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:${LAN_IP} https://${SERVER_NAME}/status.php" \
   '"installed":true'
 
 if [[ " ${SERVICES} " == *" ntfy "* ]]; then
