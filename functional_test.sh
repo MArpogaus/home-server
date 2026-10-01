@@ -12,7 +12,7 @@ mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible
   ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
     ansible_ssh_common_args | default(""), ansible_ssh_private_key_file | default(""),
     base_setup_services | map(attribute="name") | join(" "), nextcloud_service_hostname,
-    monitoring_service_grafana_admin_password, ntfy_service_token | default(""),
+    monitoring_service_grafana_admin_password, monitoring_service_alert_webhook_token,
     (base_setup_services | selectattr("name", "eq", "nextcloud") | first).port, ntfy_port] }}' 2>/dev/null \
   | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
 [[ ${#V[@]} -eq 10 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
