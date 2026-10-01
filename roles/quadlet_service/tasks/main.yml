@@ -29,7 +29,7 @@
   become: true
   become_user: "{{ service_name }}"
   vars:
-    quadlet_service_secret_items: "{{ quadlet_service_secrets | dict2items | rejectattr('value', 'eq', '') }}"
+    quadlet_service_secret_items: "{{ quadlet_service_secrets | dict2items | rejectattr('value', 'in', ['', None]) }}"
   block:
     # The | after the value keeps Ansible from stripping a trailing newline off it.
     - name: Read the stored secrets

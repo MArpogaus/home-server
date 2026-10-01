@@ -24,7 +24,7 @@ base_setup_services:
 nextcloud_service_config:
   system:
     default_phone_region: DE
-# The app ceiling and the host's memory history leave room for 12.
+# Measured on the t630: 12 workers stay within the app's memory ceiling.
 nextcloud_service_php_max_children: 12
 bunker_service_config:
   WHITELIST_COUNTRY: DE CH AT
@@ -33,7 +33,7 @@ bunker_service_config:
 ntfy_port: "{{ base_setup_services | selectattr('name', 'eq', 'ntfy') | map(attribute='port') | first | default('') }}"
 monitoring_service_host_ports: "{{ [ntfy_port] if ntfy_port else [] }}"
 monitoring_service_alert_webhook_url: "{{ ('http://127.0.0.1:' ~ ntfy_port ~ '/alerts?template=alertmanager') if ntfy_port else '' }}"
-monitoring_service_alert_webhook_token: "{{ ntfy_service_token | default('') }}"
+monitoring_service_alert_webhook_token: "{{ ntfy_service_users.alertmanager.token | default('') }}"
 
 # The proxy sites, keyed by service. home-server-bunker/README.md, "Sites" and
 # "Specifics", explain the settings.

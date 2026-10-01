@@ -75,7 +75,7 @@ once.
 ### Test VM
 
 The VM needs `qemu-system-x86_64` with `/dev/kvm`, `qemu-img`, `unxz`,
-`ssh-keygen`, `mkpasswd` and `podman`. core's password on the VM is `test`, or
+`ssh-keygen`, `openssl` and `podman`. core's password on the VM is `test`, or
 `VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes SSH, HTTP
 and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 
@@ -140,7 +140,7 @@ one of them repeats all its entries.
 | `ntfy_service_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
 | Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration" |
-| ntfy credentials | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
+| `ntfy_service_users` | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
@@ -327,10 +327,10 @@ Covered:
 - `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract"), except the signed ones
   that the OS image's own `policy.json` admits.
-- A service user opens no connection to a private, multicast or broadcast
-  IPv4 address, or to an IPv6 ULA, link-local or multicast address, the NAS
-  included.
-  `service-egress.service` loads an nftables rule on the uids of
+- A service user opens no connection to a private, shared, link-local,
+  multicast or broadcast IPv4 address. The same applies to an IPv6 ULA,
+  link-local or multicast address. This includes the NAS.
+  `service-egress.service` loads an nftables rule on the uids and subuids of
   `base_setup_services`. pasta opens every container connection on the host
   as its user, so the rule covers every container. The internet and the host
   loopback stay open.

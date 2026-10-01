@@ -6,12 +6,19 @@
 
 nextcloud_service_db_password: ""
 nextcloud_service_admin_password: ""
-# The phone logs in to ntfy as user ntfy with this password.
-ntfy_service_password: ""
-# tk_ and 29 lowercase letters and digits. Alertmanager uses it.
-ntfy_service_token: ""
-# Optional, the same form: a coding agent's token for the topic agent.
-ntfy_service_agent_token: ""
+# The phone logs in as ntfy; Alertmanager posts as alertmanager; coding agents
+# use their own agent-<name> topics. Drop agent without a coding agent.
+# home-server-ntfy/README.md gives the form of a token.
+ntfy_service_users:
+  ntfy:
+    password: ""
+    access: {alerts: rw, "agent*": rw}
+  alertmanager:
+    token: ""
+    access: {alerts: wo}
+  agent:
+    token: ""
+    access: {"agent*": rw}
 monitoring_service_grafana_admin_password: ""
 
 # A SecureBlue host needs the platform steps. A host with steps of its own names

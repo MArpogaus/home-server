@@ -12,7 +12,7 @@ mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible
   ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
     ansible_ssh_common_args | default(""), ansible_ssh_private_key_file | default(""),
     base_setup_services | map(attribute="name") | join(" "), nextcloud_service_hostname,
-    monitoring_service_grafana_admin_password, ntfy_service_token | default(""),
+    monitoring_service_grafana_admin_password, monitoring_service_alert_webhook_token,
     (base_setup_services | selectattr("name", "eq", "nextcloud") | first).port, ntfy_port] }}' 2>/dev/null \
   | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
 [[ ${#V[@]} -eq 10 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
@@ -116,9 +116,17 @@ echo "--- Btrfs Subvolumes ---"
 check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
 
+LAN_IP="\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2)"
+
 echo "--- Egress ---"
-check_output "The service users' egress rules are loaded" \
-  "nft list table inet service_egress | grep -c reject" "^2$"
+# bash exits 1 when the rule refuses the connection to sshd on the host's own
+# LAN address. A container on the host network runs as a subuid.
+# shellcheck disable=SC2016 # expands on the host
+SSH_CONNECT='timeout 5 bash -c "</dev/tcp/$ip/22" 2>/dev/null; echo $?'
+check_user_output nextcloud "A service user reaches no private address" \
+  "ip=${LAN_IP}; ${SSH_CONNECT}" "^1$"
+check_user_output nextcloud "A subuid reaches no private address" \
+  "ip=${LAN_IP}; podman unshare setpriv --reuid 1000 --regid 1000 --clear-groups ${SSH_CONNECT}" "^1$"
 
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so the data check catches a missing z or Z
@@ -183,8 +191,8 @@ check_loki "Every Loki alert rule evaluates" \
   "^err=0 ok=[1-9]"
 
 echo "--- HTTP/HTTPS ---"
-# DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server:
-# with TLS configured, BunkerWeb redirects HTTP to HTTPS, so 301 is the pass.
+# DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server.
+# With TLS, BunkerWeb redirects HTTP to HTTPS with 301 or 308.
 check_output "HTTP redirects to HTTPS" \
   "curl -s -o /dev/null -w %{http_code} -H 'Host: ${SERVER_NAME}' http://127.0.0.1:80" "30[18]"
 # status.php, not /, which redirects to /login. Proves TLS, the proxy's site,
@@ -196,7 +204,7 @@ check_output "HTTPS reaches Nextcloud through the proxy" \
 # Through the host's own LAN address the reply goes to a private address, as
 # for a client on the LAN.
 check_output "HTTPS answers a client on the LAN" \
-  "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2) https://${SERVER_NAME}/status.php" \
+  "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:${LAN_IP} https://${SERVER_NAME}/status.php" \
   '"installed":true'
 
 if [[ " ${SERVICES} " == *" ntfy "* ]]; then
