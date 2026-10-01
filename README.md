@@ -327,7 +327,9 @@ Covered:
 - `policy.json` rejects every image that no role declares
   (`home-server-template/README.md`, "Role contract"), except the signed ones
   that the OS image's own `policy.json` admits.
-- A service user reaches no private network, the NAS included.
+- A service user opens no connection to a private, multicast or broadcast
+  IPv4 address, or to an IPv6 ULA, link-local or multicast address, the NAS
+  included.
   `service-egress.service` loads an nftables rule on the uids of
   `base_setup_services`. pasta opens every container connection on the host
   as its user, so the rule covers every container. The internet and the host
@@ -355,6 +357,8 @@ Known gaps:
 - The `monitoring` user is in `systemd-journal` and reads the whole host
   journal. Alloy redacts only what it sends to Loki, so a compromised
   monitoring service reads tokens that other units log.
+- A LAN device with a global IPv6 address stays reachable from the
+  containers, because the egress rule cannot know the LAN's global prefix.
 - Without CHAP, the NAS admits any LAN device with this host's initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 
