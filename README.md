@@ -75,7 +75,7 @@ once.
 ### Test VM
 
 The VM needs `qemu-system-x86_64` with `/dev/kvm`, `qemu-img`, `unxz`,
-`ssh-keygen`, `mkpasswd` and `podman`. core's password on the VM is `test`, or
+`ssh-keygen`, `openssl` and `podman`. core's password on the VM is `test`, or
 `VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes SSH, HTTP
 and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 

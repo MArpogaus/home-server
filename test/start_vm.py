@@ -9,7 +9,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 import urllib.request
@@ -124,11 +123,9 @@ def build_ignition(platform):
         env["SSH_PUBLIC_KEY"] = handle.read().strip()
 
     # root-gate on the VM asks for it.
-    if not shutil.which("mkpasswd"):
-        fail("mkpasswd not found; the VM needs a password for root-gate")
     password = os.environ.get("VM_PASSWORD", "test")
     env["PASSWORD_HASH"] = subprocess.run(
-        ["mkpasswd", "--method=yescrypt", "--stdin"], input=password,
+        ["openssl", "passwd", "-6", "-stdin"], input=password,
         check=True, capture_output=True, text=True).stdout.strip()
 
     platform_args = ["--platform", platform] if platform else []
