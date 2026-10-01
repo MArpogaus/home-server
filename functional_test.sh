@@ -117,8 +117,12 @@ check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
 
 echo "--- Egress ---"
-check_output "The service users' egress rules are loaded" \
-  "nft list table inet service_egress | grep -c reject" "^2$"
+# curl exits 7 when the rule refuses the connection to the host's own LAN
+# address. A container on the host network runs as a subuid.
+LAN_CURL="curl -sk -o /dev/null --max-time 5 https://\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2)/"
+check_user_output nextcloud "A service user reaches no private address" "${LAN_CURL}; echo \$?" "^7$"
+check_user_output nextcloud "A subuid reaches no private address" \
+  "podman unshare setpriv --reuid 1000 --regid 1000 --clear-groups ${LAN_CURL}; echo \$?" "^7$"
 
 echo "--- SELinux Labels ---"
 # A label stays on disk once set, so the data check catches a missing z or Z
