@@ -1,8 +1,9 @@
 # home-server
 
 This repository deploys a home server on Fedora CoreOS with rootless Podman.
-It holds the host roles, the playbook, the inventory, the functional test,
-the Ignition config and the test VM. Each service is a repository of
+It holds the host roles, the playbook, the functional test, the Ignition
+config and the test VM. It deploys nothing on its own: every command names a
+deployment directory (see "Deploy"). Each service is a repository of
 its own, pinned as a submodule under `services/<name>`, so one commit here
 names every service version it deploys.
 
@@ -13,13 +14,13 @@ names every service version it deploys.
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
 | `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts |
 | `home-server-ntfy` | `services/ntfy` | Push notifications, the alerts on the phone |
-| `home-server-secrets` | `../home-server-secrets` | Credentials, SSH `known_hosts`, host settings and tasks (**private**) |
+| `home-server-secrets` | `../home-server-secrets` | Deployment of the t630: inventory, variables, credentials, `known_hosts`, pre tasks (**private**) |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
 
 ```bash
 git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
-git clone <the private secrets repo> home-server-secrets
+git clone <the private deployment repo> home-server-secrets
 ```
 
 ## Architecture
@@ -48,23 +49,23 @@ git clone <the private secrets repo> home-server-secrets
 ## Deploy
 
 The controller needs Ansible Core 2.21 or newer with passlib and bcrypt. Run
-every command from this repository: `ansible.cfg` names this inventory, the
-secrets repository's inventory after it, and the Vault password file.
-`secrets.example/` holds the templates for the secrets repository.
+every command from this repository; `ansible.cfg` names the Vault password
+file of the deployment repository, and nothing else.
 
 ```bash
 uv tool install --reinstall ansible --with-executables-from ansible-core --with passlib --with bcrypt
 ansible-galaxy collection install -r requirements.yml   # again after requirements.yml changes
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
-
-S=../home-server-secrets                   # a new secrets repository
-git init -q $S && cp -r secrets.example/. $S/ && mkdir -p $S/ssh
-# fill in the values, then:
-ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 ```
 
-Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
+Every run names a deployment directory with `-i` and a host with `-l`:
+`ansible-playbook -i <deployment dir> site.yml -l <host>`. A deployment
+directory is one host's complete setup: `inventory.yml`,
+`group_vars/all/vars.yml` (plain), `group_vars/all/vault.yml` (credentials),
+and optionally `ssh/known_hosts` and `tasks/pre.yml`, named by
+`host_tasks_pre`. `examples/vm/` is a working example for the test VM; the
+private repository holds one directory per real host.
 
 The deploy and the functional test escalate with `run0`, which needs the root
 gate open: `root-gate on` on the host asks for core's password once.
@@ -83,7 +84,7 @@ and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
 ssh -t -p 2222 -i test/coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   core@127.0.0.1 root-gate on                                        # terminal 2, after the rebase
-ansible-playbook site.yml -l test && ./functional_test.sh test
+ansible-playbook -i examples/vm site.yml -l test && ./functional_test.sh test -i examples/vm
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
@@ -91,15 +92,16 @@ python3 test/start_vm.py --restore     # back to "base"
 `--fresh` deletes the disk and its `base` snapshot. For a controller in a
 container, start the VM with `--listen <address>`. Then use `<address>` in the
 `ssh` line and add `-e ansible_host=<address>` to the playbook and the test.
+The throwaway passwords and tokens of `examples/vm/group_vars/all.yml` are
+only ever accepted by this VM on `127.0.0.1`.
 
 ### Real host
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
-needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
-`secrets.example/host_vars/test.yml` to
-`../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
-lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
-host uses the agent. `build.sh` authorises the smartcard key in the agent and
+needs 80. A real host is a new directory `../home-server-secrets/<host>/`
+built from `examples/vm/`: keep the layout, drop the self-signed and `-dev`
+lines, set the real values and encrypt the credentials with
+`ansible-vault encrypt`. SSH to a real host uses the agent. `build.sh` authorises the smartcard key in the agent and
 asks `mkpasswd` for core's password, which the console and `root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
 host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
@@ -114,28 +116,26 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
-ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
-ssh -t -o UserKnownHostsFile=../home-server-secrets/ssh/known_hosts core@<address> root-gate on
-ansible-playbook site.yml -l <host>
-./functional_test.sh <host>
+D=../home-server-secrets/<host>
+ssh-keyscan -H <address> 2>/dev/null >> $D/ssh/known_hosts
+ssh -t -o UserKnownHostsFile=$D/ssh/known_hosts core@<address> root-gate on
+ansible-playbook -i $D site.yml -l <host>
+./functional_test.sh <host> -i $D
 ```
 
 ## Configuration
 
 Every service takes the same kinds of variables:
 `home-server-template/README.md`, "Configuration interface". Each role's
-defaults are generic; this deployment's own settings, such as the geo
-allowlist and the phone region, are in `inventory/group_vars/homeserver.yml`.
-In the secrets repository, `group_vars/homeserver.yml` holds what every host
-shares, and `host_vars/<host>.yml` one host's credentials and overrides. The
-inventory sets `base_setup_services`, `bunker_service_sites`,
-`nextcloud_service_config` and `bunker_service_config`. A host that overrides
-one of them repeats all its entries.
+defaults are generic; a deployment's own settings, such as the geo allowlist
+and the phone region, are in its `group_vars/all/vars.yml`, and its
+credentials in `group_vars/all/vault.yml`. Every deployment directory writes
+out its full setup; two deployments may repeat the same value.
 
 | Variable | Required | Controls |
 |---|---|---|
-| `base_setup_services` | yes | The services with their uid and port, in `inventory/group_vars/homeserver.yml` |
-| `bunker_service_sites` | yes | The proxy site of each public service, in `inventory/group_vars/homeserver.yml` |
+| `base_setup_services` | yes | The services with their uid and port, in the deployment directory |
+| `bunker_service_sites` | yes | The proxy site of each public service, in the deployment directory |
 | `nextcloud_service_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_service_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
@@ -263,7 +263,7 @@ recognize:download-models`.
 1. Copy `home-server-template` as its `README.md` says, and add the new
    repository: `git submodule add <its URL> services/<name>`.
 2. Add `name`, `uid` and, for a pod that the proxy or another pod reaches,
-   `port` to `base_setup_services` in `inventory/group_vars/homeserver.yml`.
+   `port` to `base_setup_services` in every deployment directory.
    `groups` adds host groups, such as `systemd-journal`.
    The `uid` never changes after the first deploy, because it sets the subuid
    range that owns the service's files.
@@ -307,9 +307,11 @@ The ports in use:
   exception: it runs as root, so a digest pins it, and Renovate updates it.
   The reboot uses `--check-inhibitors=yes`, so it never interrupts a backup or
   a dump.
-- **The secrets repository is a second inventory.** `ansible.cfg` lists it
-  after this one, so its `group_vars/` and `host_vars/` win over this
-  repository's, and Ansible decrypts them by itself.
+- **A deployment directory is the whole truth for one host.** `ansible.cfg`
+  names no inventory, so a forgotten `-i` fails instead of deploying to the
+  wrong default. Plain vars and Vault credentials sit side by side in the
+  private repository, and `examples/vm/` keeps the test VM runnable without
+  it.
 
 ## Security
 
@@ -334,9 +336,9 @@ Covered:
   `base_setup_services`. pasta opens every container connection on the host
   as its user, so the rule covers every container. The internet and the host
   loopback stay open.
-- SSH checks a real host against `ssh/known_hosts` of the secrets repository.
-  Only the inventory entry `test` skips the check.
-- Credentials in the secrets repository are Vault-encrypted. Keep a copy of
+- SSH checks a real host against `ssh/known_hosts` of its deployment
+  directory. Only the `test` host skips the check.
+- Credentials in the deployment repository are Vault-encrypted. Keep a copy of
   the Vault password in a password manager: it also guards the LUKS passphrase.
 
 Known gaps:

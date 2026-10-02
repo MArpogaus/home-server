@@ -5,7 +5,7 @@
     - name: Refuse a run without -l
       ansible.builtin.assert:
         that: ansible_limit is defined
-        fail_msg: Pass -l <host>. Without it the playbook runs on every host of the inventory.
+        fail_msg: Pass -i <deployment dir> and -l <host>. Without -l the playbook runs on every host of the inventory.
         quiet: true
 
     - name: Locate each service repository in services/
