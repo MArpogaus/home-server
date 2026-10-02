@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Usage: ./functional_test.sh <inventory host> [ansible options]
+# Usage: ./functional_test.sh <host> -i <deployment dir> [ansible options]
 HOST="${1:?usage: $0 <inventory host> [ansible options]}"
 shift
 cd "$(dirname "${BASH_SOURCE[0]}")"
