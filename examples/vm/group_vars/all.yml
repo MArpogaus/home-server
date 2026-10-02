@@ -1,0 +1,88 @@
+---
+# The complete deployment of the test VM (test/start_vm.py). The passwords and
+# tokens are throwaway: only this VM on 127.0.0.1 accepts them. A real host is
+# its own deployment directory, as README.md, "Deploy", says.
+
+# What this deployment runs. base_setup configures a host; this says what the
+# host is for, so the role carries no service names of its own. A uid never
+# changes: README.md, "Adding a service".
+base_setup_services:
+  - name: nextcloud
+    uid: 82
+    port: 8080
+  - name: bunker
+    uid: 1001
+  - name: monitoring
+    uid: 1002
+    # Alloy reads the host journal.
+    groups: [systemd-journal]
+  - name: ntfy
+    uid: 1003
+    port: 8081
+
+# The hostnames of this deployment; no public DNS here.
+nextcloud_service_hostname: cloud.example.com
+ntfy_service_hostname: ntfy.example.com
+# Without public DNS, BunkerWeb makes its own certificate instead of ACME.
+bunker_service_certificates: self-signed
+# The VM follows the image that the dev branch publishes.
+nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
+# A SecureBlue host needs the platform steps.
+host_tasks_pre: "{{ playbook_dir }}/platform/secureblue.yml"
+
+# Settings of this deployment. Each service merges them over its own defaults.
+nextcloud_service_config:
+  system:
+    default_phone_region: DE
+nextcloud_service_php_max_children: 12
+bunker_service_config:
+  WHITELIST_COUNTRY: DE CH AT
+
+# Alertmanager posts to ntfy while ntfy is deployed.
+ntfy_port: "{{ base_setup_services | selectattr('name', 'eq', 'ntfy') | map(attribute='port') | first | default('') }}"
+monitoring_service_host_ports: "{{ [ntfy_port] if ntfy_port else [] }}"
+monitoring_service_alert_webhook_url: "{{ ('http://127.0.0.1:' ~ ntfy_port ~ '/alerts?template=alertmanager') if ntfy_port else '' }}"
+monitoring_service_alert_webhook_token: "{{ ntfy_service_users.alertmanager.token | default('') }}"
+
+# The proxy sites, keyed by service. home-server-bunker/README.md, "Sites" and
+# "Specifics", explain the settings.
+bunker_service_sites:
+  nextcloud:
+    options:
+      REVERSE_PROXY_WS: true
+      MAX_CLIENT_SIZE: 15G
+      REFERRER_POLICY: no-referrer
+      ALLOWED_METHODS: "GET|POST|HEAD|COPY|DELETE|LOCK|MKCOL|MOVE|PROPFIND|PROPPATCH|PUT|UNLOCK|OPTIONS|REPORT|SEARCH"
+      BAD_BEHAVIOR_STATUS_CODES: "400 401 403 405 444"
+      BAD_BEHAVIOR_THRESHOLD: 25
+      MODSECURITY_CRS_PLUGINS: nextcloud-rule-exclusions
+    limit_req_urls:
+      - {url: /apps, rate: 5r/s}
+      - {url: /apps/text/session/sync, rate: 8r/s}
+      - {url: /core/preview, rate: 5r/s}
+      - {url: /remote.php/, rate: 8r/s}
+      - {url: /push/ws, rate: 8r/s}
+      - {url: /apps/memories/api/, rate: 8r/s}
+  ntfy:
+    options:
+      REVERSE_PROXY_WS: true
+      ALLOWED_METHODS: "GET|POST|HEAD|PUT|OPTIONS"
+      USE_MODSECURITY: false
+      BAD_BEHAVIOR_STATUS_CODES: "400 403 405 444"
+
+# The phone logs in as ntfy; Alertmanager posts as alertmanager; coding agents
+# use their own agent-<name> topics.
+ntfy_service_users:
+  ntfy:
+    password: "0MPRPktw9jzXATJyrZqnljI0KmlLQgdE9C0CzFoS3H5ba"
+    access: {alerts: rw, "agent*": rw}
+  alertmanager:
+    token: "tk_fc7d0a1bd3136395dfba49a5cb7812"
+    access: {alerts: wo}
+  agent:
+    token: "tk_9eb3b6ee8c9c6ec801e5e3f0e17226"
+    access: {"agent*": rw}
+
+nextcloud_service_db_password: "dISQ7YyXUCwdkEGQGC83XMmliekMGgeTv7xxUnbIfEndypEe"
+nextcloud_service_admin_password: "54mWPEO3dhR5SyTn2TvlB3OCe8kQDLvTm7yUUSDlhIOJiVQZ"
+monitoring_service_grafana_admin_password: "0WuVQePwNEyaRFNUk0Uo1dSx2bB4Xo7z2VSJQnic1QcwTACs"
