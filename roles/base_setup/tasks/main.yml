@@ -1,13 +1,16 @@
 ---
 # Two services on one uid share a subuid range, two on one port cannot start.
+# A name is a user name and the <name>_service_ variable prefix.
 - name: Assert every service has its own name, uid and port
   ansible.builtin.assert:
     that:
+      - base_setup_services | map(attribute='name') | reject('match', '^[a-z][a-z0-9_]*$') | list | length == 0
       - base_setup_services | map(attribute='name') | unique | length == base_setup_services | length
       - base_setup_services | map(attribute='uid') | unique | length == base_setup_services | length
       - base_setup_service_ports | unique | length == base_setup_service_ports | length
     fail_msg: >-
-      Give every entry of base_setup_services its own name, uid and port.
+      Give every entry of base_setup_services its own name (a-z, 0-9 and _,
+      starting with a letter), uid and port.
       README.md, "Adding a service".
     quiet: true
   vars:
