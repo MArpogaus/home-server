@@ -46,12 +46,13 @@ git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
 
 ## Deploy
 
-The controller needs Ansible Core 2.21 or newer with passlib and bcrypt. Run
-every command from this repository. `ansible.cfg` names the Vault password
+The controller needs `uv` and installs Ansible Core 2.21 or newer with passlib
+and bcrypt; `requirements.yml` names the collections. Run every command from
+this repository. `ansible.cfg` names the Vault password
 file and no inventory.
 
 ```bash
-uv tool install --reinstall ansible --with-executables-from ansible-core --with passlib --with bcrypt
+uv tool install --reinstall ansible-core --with passlib --with bcrypt
 ansible-galaxy collection install -r requirements.yml   # again after requirements.yml changes
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
@@ -129,9 +130,9 @@ cd ignition
 podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
   quay.io/coreos/coreos-installer:release@sha256:2c94387e76ae351a4183f29707fd7be57a9290675524391bdb17b40de1e088ff \
   download -s stable -p metal -f iso
-./build.sh --platform ../platform/secureblue.bu ign    # render config.ign; read it
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
-  /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
+  /dev/disk/by-id/<target disk>   # writes config.ign and install.iso; read config.ign before you boot
+# install.iso erases that disk without a prompt.
 cd ..
 D=<deployment dir>
 mkdir -p $D/ssh
