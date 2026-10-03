@@ -46,9 +46,9 @@ git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
 
 ## Deploy
 
-The controller needs `uv` and installs Ansible Core 2.21 or newer with passlib
-and bcrypt; `requirements.yml` names the collections. Run every command from
-this repository. `ansible.cfg` names the Vault password
+The controller needs `uv`. The command below installs Ansible Core 2.21 or
+newer with passlib and bcrypt; `requirements.yml` names the collections. Run
+every command from this repository. `ansible.cfg` names the Vault password
 file and no inventory.
 
 ```bash
