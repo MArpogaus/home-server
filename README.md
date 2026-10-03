@@ -57,13 +57,20 @@ mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
 ```
 
-Every run names a deployment directory with `-i` and a host with `-l`:
-`ansible-playbook -i <deployment dir> site.yml -l <host>`. A deployment
-directory is one host's complete setup: `inventory.yml`,
-`group_vars/all/vars.yml` (plain), `group_vars/all/vault.yml` (credentials),
-and optionally `ssh/known_hosts` and `tasks/pre.yml`, named by
-`host_tasks_pre`. `examples/vm/` is a working example for the test VM. Keep
-the directory of a real host in a private repository of its own.
+Every run names the `inventory.yml` of a deployment directory with `-i` and a
+host with `-l`:
+
+```bash
+ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
+```
+
+Ansible loads `group_vars/` next to that file. A directory as `-i` would also
+read `ssh/` and `tasks/` as inventories. A deployment directory is one host's
+complete setup: `inventory.yml`, `group_vars/all/vars.yml` (plain),
+`group_vars/all/vault.yml` (credentials), and optionally `ssh/known_hosts`
+and `tasks/pre.yml`, named by `host_tasks_pre`. `examples/vm/` is a working
+example for the test VM. Keep the directory of a real host in a private
+repository of its own.
 
 The deploy and the functional test escalate with `run0`, which needs the root
 gate open: `root-gate on` on the host asks for core's password once.
@@ -82,7 +89,8 @@ The VM needs `qemu-system-x86_64` with `/dev/kvm`, `qemu-img`, `unxz`,
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
 ssh -t -p 2222 -i test/coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   core@127.0.0.1 root-gate on                                        # terminal 2, after the rebase
-ansible-playbook -i examples/vm site.yml -l test && ./functional_test.sh test -i examples/vm
+ansible-playbook -i examples/vm/inventory.yml site.yml -l test \
+  && ./functional_test.sh test -i examples/vm/inventory.yml
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
@@ -129,8 +137,8 @@ D=<deployment dir>
 mkdir -p $D/ssh
 ssh-keyscan -H <address> 2>/dev/null >> $D/ssh/known_hosts
 ssh -t -o UserKnownHostsFile=$D/ssh/known_hosts core@<address> root-gate on
-ansible-playbook -i $D site.yml -l <host>
-./functional_test.sh <host> -i $D
+ansible-playbook -i $D/inventory.yml site.yml -l <host>
+./functional_test.sh <host> -i $D/inventory.yml
 ```
 
 ## Configuration
@@ -169,9 +177,9 @@ The functional test also reads `ntfy_port` and
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
 
-`functional_test.sh <host> -i <deployment dir>` passes further arguments to
-`ansible`, such as `-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also
-runs a real backup to that target.
+`functional_test.sh <host> -i <deployment dir>/inventory.yml` passes further
+arguments to `ansible`, such as `-e ansible_host=<address>`.
+`BACKUP_TARGET=<name>` also runs a real backup to that target.
 
 ## Backup and restore
 
@@ -237,7 +245,7 @@ deploy starts the service again.
 ```bash
 run0 btrfs-restore.sh /var/services/nextcloud /var/services/snapshots/nextcloud/2026-09-29
 run0 btrfs-restore.sh /var/services/nextcloud /var/backup/nas/nextcloud/2026-09-29
-ansible-playbook -i <deployment dir> site.yml -l <host>
+ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
 ```
 
 The first line restores from a local snapshot, the second from a backup
@@ -254,7 +262,7 @@ run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud 
 run0 find $S -xdev -perm /6000 \( -uid 0 -o -gid 0 -o -not -path '*/.local/share/containers/*' \) -ls
 run0 getcap -r $S | grep -v rootid
 run0 btrfs-restore.sh /var/services/nextcloud $S
-ansible-playbook -i <deployment dir> site.yml -l <host>
+ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
 ```
 
 The `find` and the `getcap` list what a rootless service does not bring. The
