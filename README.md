@@ -101,17 +101,20 @@ Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
 needs 80. A real host is a new directory `../home-server-secrets/<host>/`
 built from `examples/vm/`. Keep the layout and change these parts:
 
+- First encrypt `group_vars/all/vault.yml` with `ansible-vault encrypt`.
+  Then replace every value in it with `ansible-vault edit`, because the
+  example values are public. `openssl rand -base64 36` makes a password;
+  `home-server-ntfy/README.md` gives the form of a token.
 - In `inventory.yml`, set the address, drop `ansible_port` and
   `ansible_ssh_private_key_file`, and replace the SSH options with
   `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`,
   as `../home-server-secrets/t630/inventory.yml` does.
 - In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
   the real values. Add the probe URLs and the backup target ("Configuration").
-- In `group_vars/all/vault.yml`, set the real credentials. Then encrypt the
-  file with `ansible-vault encrypt`.
 
-SSH to a real host uses the agent. `build.sh` authorises the smartcard key in the agent and
-asks `mkpasswd` for core's password, which the console and `root-gate` use.
+SSH to a real host uses the agent. `build.sh` authorises the smartcard key in
+the agent and asks `mkpasswd` for core's password, which the console and
+`root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
 host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
 -lf -` before the key goes into `known_hosts`.
