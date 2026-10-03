@@ -159,9 +159,13 @@ out its full setup; two deployments may repeat the same value.
 | `base_setup_backup_retention_days` | no | Days a snapshot stays on a target; 90 |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
+| `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
-| `host_tasks_pre` | no | A task file that runs before `base_setup` |
+| `host_tasks_pre` | no | A task file that runs before `base_setup`. On SecureBlue, `platform/secureblue.yml` or a file that includes it |
+
+The functional test also reads `ntfy_port` and
+`monitoring_service_alert_webhook_token`, the ntfy wiring of `examples/vm/`.
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
@@ -321,8 +325,6 @@ The ports in use:
 - **A deployment directory is the whole truth for one host.** `ansible.cfg`
   names no inventory, so a forgotten `-i` fails instead of deploying to the
   wrong default. Plain vars and Vault credentials sit side by side in it.
-  A real host keeps its directory private; `examples/vm/` keeps the test VM
-  runnable without one.
 
 ## Security
 
@@ -349,8 +351,9 @@ Covered:
   loopback stay open.
 - SSH checks a real host against `ssh/known_hosts` of its deployment
   directory. Only the test VM in `examples/vm/` skips the check.
-- Credentials in a deployment directory are Vault-encrypted. Keep a copy of
-  the Vault password in a password manager: it also guards the LUKS passphrase.
+- A real host's credentials are Vault-encrypted; the throwaway ones in
+  `examples/vm/` are not. Keep a copy of the Vault password in a password
+  manager: it also guards the LUKS passphrase.
 
 Known gaps:
 
