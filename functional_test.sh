@@ -26,6 +26,7 @@ print("\n".join(map(str, host["msg"])))' "${HOST}" 2>>"${LOOKUP_ERR}")
 if [[ ${#V[@]} -ne 10 ]]; then
   echo "ERROR: cannot read ${HOST} from the inventory:" >&2
   grep -v '^Traceback\|^  \|^json.decoder\|^KeyError\|^IndexError' "${LOOKUP_ERR}" >&2
+  rm -f "${LOOKUP_ERR}"
   exit 1
 fi
 rm -f "${LOOKUP_ERR}"
@@ -90,7 +91,7 @@ run_user() {
 [[ "$(remote true)" != __HOST_UNREACHABLE__ ]] \
   || { echo "ERROR: cannot reach core@${TARGET_HOST}:${TARGET_PORT}" >&2; exit 1; }
 remote 'test -e /run/polkit/root-gate && echo open' | grep -q open \
-  || { echo "ERROR: the root gate is closed; run root-gate on as core on the host" >&2; exit 1; }
+  || { echo "ERROR: The root gate is closed. Run \`root-gate on\` as core on the host; README.md, \"Deploy\"." >&2; exit 1; }
 
 # The snapshot and backup checks start units whose OnSuccess= chain ends in
 # auto-reboot-staged.service. A runtime drop-in with a condition that never
