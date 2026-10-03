@@ -28,7 +28,7 @@ git clone <the private deployment repo> home-server-secrets
 - **Host and platform.** The roles target stock Fedora CoreOS, installed from
   `ignition/`. SecureBlue's steps are platform files: `platform/secureblue.bu`
   for Ignition, and `platform/secureblue.yml`, which `site.yml` runs as
-  `host_tasks_pre` before `base_setup`. The inventory entry names the host.
+  `host_tasks_pre` before `base_setup`.
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
@@ -49,8 +49,8 @@ git clone <the private deployment repo> home-server-secrets
 ## Deploy
 
 The controller needs Ansible Core 2.21 or newer with passlib and bcrypt. Run
-every command from this repository; `ansible.cfg` names the Vault password
-file of the deployment repository, and nothing else.
+every command from this repository. `ansible.cfg` names the Vault password
+file and no inventory.
 
 ```bash
 uv tool install --reinstall ansible --with-executables-from ansible-core --with passlib --with bcrypt
@@ -92,16 +92,24 @@ python3 test/start_vm.py --restore     # back to "base"
 `--fresh` deletes the disk and its `base` snapshot. For a controller in a
 container, start the VM with `--listen <address>`. Then use `<address>` in the
 `ssh` line and add `-e ansible_host=<address>` to the playbook and the test.
-The throwaway passwords and tokens of `examples/vm/group_vars/all.yml` are
-only ever accepted by this VM on `127.0.0.1`.
+`examples/vm/group_vars/all/vault.yml` holds throwaway passwords and tokens in
+plain text. They are for the test VM only.
 
 ### Real host
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
 needs 80. A real host is a new directory `../home-server-secrets/<host>/`
-built from `examples/vm/`: keep the layout, drop the self-signed and `-dev`
-lines, set the real values and encrypt the credentials with
-`ansible-vault encrypt`. SSH to a real host uses the agent. `build.sh` authorises the smartcard key in the agent and
+built from `examples/vm/`. Keep the layout and change these parts:
+
+- In `inventory.yml`, set the address and replace the SSH options with
+  `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`,
+  as `../home-server-secrets/t630/inventory.yml` does.
+- In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
+  the real values.
+- In `group_vars/all/vault.yml`, set the real credentials. Then encrypt the
+  file with `ansible-vault encrypt`.
+
+SSH to a real host uses the agent. `build.sh` authorises the smartcard key in the agent and
 asks `mkpasswd` for core's password, which the console and `root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
 host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
@@ -117,6 +125,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
 D=../home-server-secrets/<host>
+mkdir -p $D/ssh
 ssh-keyscan -H <address> 2>/dev/null >> $D/ssh/known_hosts
 ssh -t -o UserKnownHostsFile=$D/ssh/known_hosts core@<address> root-gate on
 ansible-playbook -i $D site.yml -l <host>
@@ -223,7 +232,7 @@ deploy starts the service again.
 ```bash
 run0 btrfs-restore.sh /var/services/nextcloud /var/services/snapshots/nextcloud/2026-09-29
 run0 btrfs-restore.sh /var/services/nextcloud /var/backup/nas/nextcloud/2026-09-29
-ansible-playbook site.yml -l <host>
+ansible-playbook -i <deployment dir> site.yml -l <host>
 ```
 
 The first line restores from a local snapshot, the second from a backup
@@ -240,7 +249,7 @@ run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud 
 run0 find $S -xdev -perm /6000 \( -uid 0 -o -gid 0 -o -not -path '*/.local/share/containers/*' \) -ls
 run0 getcap -r $S | grep -v rootid
 run0 btrfs-restore.sh /var/services/nextcloud $S
-ansible-playbook site.yml -l <host>
+ansible-playbook -i <deployment dir> site.yml -l <host>
 ```
 
 The `find` and the `getcap` list what a rootless service does not bring. The
