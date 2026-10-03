@@ -101,7 +101,8 @@ Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
 needs 80. A real host is a new directory `../home-server-secrets/<host>/`
 built from `examples/vm/`. Keep the layout and change these parts:
 
-- In `inventory.yml`, set the address and replace the SSH options with
+- In `inventory.yml`, set the address, drop `ansible_port` and
+  `ansible_ssh_private_key_file`, and replace the SSH options with
   `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`,
   as `../home-server-secrets/t630/inventory.yml` does.
 - In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
