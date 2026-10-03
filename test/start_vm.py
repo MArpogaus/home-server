@@ -26,14 +26,11 @@ URL = (f"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/"
        f"{FCOS_VERSION}/x86_64/fedora-coreos-{FCOS_VERSION}-qemu.x86_64.qcow2.xz")
 
 BASE_SNAPSHOT = "base"
-# Match the 8 GB target, so a cold start is not tested under false pressure.
+# 8 GB, as on a small host, so a cold start is not tested under false pressure.
 MEMORY_MB = "8192"
 CPUS = "2"
 DISK_SIZE = "40G"
 SSH_PORT = 2222
-# Unprivileged, so the forwards need no root.
-HTTP_PORT = 8080
-HTTPS_PORT = 8443
 
 
 def fail(msg):
@@ -152,12 +149,7 @@ def boot(ignition_args, listen):
         "-smp", CPUS,
         "-drive", f"file={DISK},format=qcow2,if=virtio",
         *ignition_args,
-        "-netdev", ",".join([
-            "user", "id=net0",
-            f"hostfwd=tcp:{listen}:{SSH_PORT}-:22",
-            f"hostfwd=tcp:{listen}:{HTTP_PORT}-:80",
-            f"hostfwd=tcp:{listen}:{HTTPS_PORT}-:443",
-        ]),
+        "-netdev", f"user,id=net0,hostfwd=tcp:{listen}:{SSH_PORT}-:22",
         "-device", "virtio-net-pci,netdev=net0",
         "-display", "none",
         "-serial", "mon:stdio",

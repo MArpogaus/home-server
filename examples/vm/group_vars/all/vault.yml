@@ -1,0 +1,20 @@
+---
+# The throwaway credentials of the test VM, in plain text. README.md, "Real
+# host", says how a real host encrypts and replaces them.
+
+# The phone logs in as ntfy; Alertmanager posts as alertmanager; coding agents
+# use their own agent-<name> topics.
+ntfy_service_users:
+  ntfy:
+    password: "0MPRPktw9jzXATJyrZqnljI0KmlLQgdE9C0CzFoS3H5ba"
+    access: {alerts: rw, "agent*": rw}
+  alertmanager:
+    token: "tk_b06e81fd1ff5b7ca52e41b6193ea2"
+    access: {alerts: wo}
+  agent:
+    token: "tk_829df32af2f272c1938c01f0739b2"
+    access: {"agent*": rw}
+
+nextcloud_service_db_password: "dISQ7YyXUCwdkEGQGC83XMmliekMGgeTv7xxUnbIfEndypEe"
+nextcloud_service_admin_password: "54mWPEO3dhR5SyTn2TvlB3OCe8kQDLvTm7yUUSDlhIOJiVQZ"
+monitoring_service_grafana_admin_password: "0WuVQePwNEyaRFNUk0Uo1dSx2bB4Xo7z2VSJQnic1QcwTACs"

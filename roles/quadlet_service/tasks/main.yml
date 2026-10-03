@@ -4,8 +4,9 @@
     # An unset, null or empty value compares as ''; no regex means not empty.
     that: lookup('vars', item.key, default='') | default('', true) | string is match(item.value or '.')
     fail_msg: >-
-      Set {{ item.key }}{{ (' to match ' ~ item.value) if item.value else '' }}.
-      home-server-{{ service_name }}/README.md, "Configuration".
+      {% if item.key == 'service_port' %}Give the {{ service_name }} entry of base_setup_services a port.
+      home-server/README.md, "Adding a service".{% else %}Set {{ item.key }}{{ (' to match ' ~ item.value) if item.value else '' }}.
+      home-server-{{ service_name }}/README.md, "Configuration".{% endif %}
     quiet: true
   loop: "{{ quadlet_service_required | dict2items }}"
   loop_control:
@@ -24,38 +25,19 @@
          | select('match', '^' ~ service_name ~ '-[^/]+[.]container([.]j2)?$')
          | map('regex_replace', '^' ~ service_name ~ '-', '') | map('regex_replace', '[.]container([.]j2)?$', '') | list }}
 
-# An empty value is an optional secret that is not set.
+# An empty value is an optional secret that is not set. A container reads a
+# secret when it starts, so a new value restarts the pod.
 - name: Store the secrets as Podman secrets
   become: true
   become_user: "{{ service_name }}"
-  vars:
-    quadlet_service_secret_items: "{{ quadlet_service_secrets | dict2items | rejectattr('value', 'in', ['', None]) }}"
-  block:
-    # The | after the value keeps Ansible from stripping a trailing newline off it.
-    - name: Read the stored secrets
-      ansible.builtin.command:
-        cmd: podman secret inspect --showsecret --format {% raw %}'{{.SecretData}}|'{% endraw %} {{ item.key }}
-      loop: "{{ quadlet_service_secret_items }}"
-      loop_control:
-        label: "{{ item.key }}"
-      register: quadlet_service_secret_stored
-      changed_when: false
-      failed_when: false
-      no_log: true
-
-    # A container reads a secret when it starts, so a new value restarts the pod.
-    - name: Replace the secrets whose value changed
-      ansible.builtin.command:
-        cmd: podman secret create --replace {{ item.item.key }} -
-        stdin: "{{ item.item.value | string }}"
-        stdin_add_newline: false
-      loop: "{{ quadlet_service_secret_stored.results }}"
-      loop_control:
-        label: "{{ item.item.key }}"
-      when: item.rc != 0 or item.stdout != (item.item.value | string) ~ '|'
-      register: quadlet_service_secret_replaced
-      changed_when: true
-      no_log: true
+  containers.podman.podman_secret:
+    name: "{{ item.key }}"
+    data: "{{ item.value | string }}"
+  loop: "{{ quadlet_service_secrets | dict2items | rejectattr('value', 'in', ['', None]) }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: quadlet_service_secret_replaced
+  no_log: true
 
 # One archive per service instead of one SSH round trip per file.
 # README.md, "Design decisions".

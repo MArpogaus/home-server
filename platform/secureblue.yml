@@ -13,7 +13,9 @@
   when: "'disabled' in secureblue_container_userns.stdout"
   changed_when: true
 
-# SecureBlue's policy stops iscsid from creating its netlink socket.
+# SecureBlue denies iscsid its netlink socket with a CIL deny, which no allow
+# rule overrides (secureblue_deny_obscure_sockets.cil). Drop this when that
+# deny exempts iscsid_t.
 - name: Make iscsid a permissive SELinux domain
   community.general.selinux_permissive:
     name: iscsid_t

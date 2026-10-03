@@ -1,4 +1,8 @@
 ---
+# The complete non-secret deployment of the test VM (test/start_vm.py). Its
+# throwaway credentials live in vault.yml next to this file. A real host is
+# its own deployment directory, as README.md, "Deploy", says.
+
 ansible_user: core
 
 # What this deployment runs. base_setup configures a host; this says what the
@@ -18,13 +22,20 @@ base_setup_services:
     uid: 1003
     port: 8081
 
-# The public hostnames and the credentials are in the secrets repository.
+# The hostnames of this deployment; no public DNS here.
+nextcloud_service_hostname: cloud.example.com
+ntfy_service_hostname: ntfy.example.com
+# Without public DNS, BunkerWeb makes its own certificate instead of ACME.
+bunker_service_certificates: self-signed
+# The VM follows the image that the dev branch publishes.
+nextcloud_service_app_image: "ghcr.io/marpogaus/nextcloud:35-dev"
+# A SecureBlue host needs the platform steps.
+host_tasks_pre: "{{ playbook_dir }}/platform/secureblue.yml"
 
 # Settings of this deployment. Each service merges them over its own defaults.
 nextcloud_service_config:
   system:
     default_phone_region: DE
-# Measured on the t630: 12 workers stay within the app's memory ceiling.
 nextcloud_service_php_max_children: 12
 bunker_service_config:
   WHITELIST_COUNTRY: DE CH AT

@@ -1,8 +1,9 @@
 # home-server
 
 This repository deploys a home server on Fedora CoreOS with rootless Podman.
-It holds the host roles, the playbook, the inventory, the functional test,
-the Ignition config and the test VM. Each service is a repository of
+It holds the host roles, the playbook, the functional test, the Ignition
+config and the test VM. It deploys nothing on its own: every command names a
+deployment directory (see "Deploy"). Each service is a repository of
 its own, pinned as a submodule under `services/<name>`, so one commit here
 names every service version it deploys.
 
@@ -13,13 +14,11 @@ names every service version it deploys.
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
 | `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts |
 | `home-server-ntfy` | `services/ntfy` | Push notifications, the alerts on the phone |
-| `home-server-secrets` | `../home-server-secrets` | Credentials, SSH `known_hosts`, host settings and tasks (**private**) |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
 
 ```bash
 git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
-git clone <the private secrets repo> home-server-secrets
 ```
 
 ## Architecture
@@ -27,7 +26,7 @@ git clone <the private secrets repo> home-server-secrets
 - **Host and platform.** The roles target stock Fedora CoreOS, installed from
   `ignition/`. SecureBlue's steps are platform files: `platform/secureblue.bu`
   for Ignition, and `platform/secureblue.yml`, which `site.yml` runs as
-  `host_tasks_pre` before `base_setup`. The inventory entry names the host.
+  `host_tasks_pre` before `base_setup`.
 - **Service users and rootless Quadlets.** For each entry in
   `base_setup_services`, `base_setup` makes a system user, a Btrfs subvolume
   under `/var/services` and a subuid range from
@@ -47,24 +46,32 @@ git clone <the private secrets repo> home-server-secrets
 
 ## Deploy
 
-The controller needs Ansible Core 2.21 or newer with passlib and bcrypt. Run
-every command from this repository: `ansible.cfg` names this inventory, the
-secrets repository's inventory after it, and the Vault password file.
-`secrets.example/` holds the templates for the secrets repository.
+The controller needs `uv`. The command below installs Ansible Core 2.21 or
+newer with passlib and bcrypt; `requirements.yml` names the collections. Run
+every command from this repository. `ansible.cfg` names the Vault password
+file and no inventory.
 
 ```bash
-uv tool install --reinstall ansible --with-executables-from ansible-core --with passlib --with bcrypt
+uv tool install --reinstall ansible-core --with passlib --with bcrypt
 ansible-galaxy collection install -r requirements.yml   # again after requirements.yml changes
 mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
-
-S=../home-server-secrets                   # a new secrets repository
-git init -q $S && cp -r secrets.example/. $S/ && mkdir -p $S/ssh
-# fill in the values, then:
-ansible-vault encrypt $S/group_vars/homeserver.yml $S/host_vars/test.yml
 ```
 
-Every playbook run takes `-l <host>`: `site.yml` refuses a run without it.
+Every run names the `inventory.yml` of a deployment directory with `-i` and a
+host with `-l`:
+
+```bash
+ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
+```
+
+Ansible loads `group_vars/` next to that file. A directory as `-i` would also
+read `ssh/` and `tasks/` as inventories. A deployment directory is one host's
+complete setup: `inventory.yml`, `group_vars/all/vars.yml` (plain),
+`group_vars/all/vault.yml` (credentials), and optionally `ssh/known_hosts`
+and `tasks/pre.yml`, named by `host_tasks_pre`. `examples/vm/` is a working
+example for the test VM. Keep the directory of a real host in a private
+repository of its own.
 
 The deploy and the functional test escalate with `run0`, which needs the root
 gate open: `root-gate on` on the host asks for core's password once.
@@ -76,14 +83,15 @@ once.
 
 The VM needs `qemu-system-x86_64` with `/dev/kvm`, `qemu-img`, `unxz`,
 `ssh-keygen`, `openssl` and `podman`. core's password on the VM is `test`, or
-`VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes SSH, HTTP
-and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
+`VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes only SSH on
+`127.0.0.1:2222`; the functional test checks the web ports on the VM itself.
 
 ```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
 ssh -t -p 2222 -i test/coreos_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
   core@127.0.0.1 root-gate on                                        # terminal 2, after the rebase
-ansible-playbook site.yml -l test && ./functional_test.sh test
+ansible-playbook -i examples/vm/inventory.yml site.yml -l test \
+  && ./functional_test.sh test -i examples/vm/inventory.yml
 python3 test/start_vm.py --save-base   # VM shut down: keep this disk as "base"
 python3 test/start_vm.py --restore     # back to "base"
 ```
@@ -95,12 +103,24 @@ container, start the VM with `--listen <address>`. Then use `<address>` in the
 ### Real host
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
-needs 80. Add the host to `../home-server-secrets/inventory.yml`, copy
-`secrets.example/host_vars/test.yml` to
-`../home-server-secrets/host_vars/<host>.yml`, drop its self-signed and `-dev`
-lines, fill it in and encrypt it with `ansible-vault encrypt`. SSH to a real
-host uses the agent. `build.sh` authorises the smartcard key in the agent and
-asks `mkpasswd` for core's password, which the console and `root-gate` use.
+needs 80. A real host is a new deployment directory built from
+`examples/vm/`. Keep the layout, rewrite the header comments of the copied
+files, and change these parts:
+
+- First encrypt `group_vars/all/vault.yml` with `ansible-vault encrypt`.
+  Then replace every value in it with `ansible-vault edit`, because the
+  example values are public. "Configuration" gives the form of a password,
+  `home-server-ntfy/README.md` the form of a token.
+- In `inventory.yml`, rename the host `test`, set the address, drop
+  `ansible_port` and `ansible_ssh_private_key_file`, and replace the SSH
+  options with
+  `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`.
+- In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
+  the real values. Add the probe URLs and the backup target ("Configuration").
+
+SSH to a real host uses the agent. `build.sh` authorises the smartcard key in
+the agent and asks `mkpasswd` for core's password, which the console and
+`root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
 host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
 -lf -` before the key goes into `known_hosts`.
@@ -110,32 +130,31 @@ cd ignition
 podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
   quay.io/coreos/coreos-installer:release@sha256:2c94387e76ae351a4183f29707fd7be57a9290675524391bdb17b40de1e088ff \
   download -s stable -p metal -f iso
-./build.sh --platform ../platform/secureblue.bu ign    # render config.ign; read it
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
-  /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
+  /dev/disk/by-id/<target disk>   # writes config.ign and install.iso; read config.ign before you boot
+# install.iso erases that disk without a prompt.
 cd ..
-ssh-keyscan -H <address> 2>/dev/null >> ../home-server-secrets/ssh/known_hosts
-ssh -t -o UserKnownHostsFile=../home-server-secrets/ssh/known_hosts core@<address> root-gate on
-ansible-playbook site.yml -l <host>
-./functional_test.sh <host>
+D=<deployment dir>
+mkdir -p $D/ssh
+ssh-keyscan -H <address> 2>/dev/null >> $D/ssh/known_hosts
+ssh -t -o UserKnownHostsFile=$D/ssh/known_hosts core@<address> root-gate on
+ansible-playbook -i $D/inventory.yml site.yml -l <host>
+./functional_test.sh <host> -i $D/inventory.yml
 ```
 
 ## Configuration
 
 Every service takes the same kinds of variables:
 `home-server-template/README.md`, "Configuration interface". Each role's
-defaults are generic; this deployment's own settings, such as the geo
-allowlist and the phone region, are in `inventory/group_vars/homeserver.yml`.
-In the secrets repository, `group_vars/homeserver.yml` holds what every host
-shares, and `host_vars/<host>.yml` one host's credentials and overrides. The
-inventory sets `base_setup_services`, `bunker_service_sites`,
-`nextcloud_service_config` and `bunker_service_config`. A host that overrides
-one of them repeats all its entries.
+defaults are generic; a deployment's own settings, such as the geo allowlist
+and the phone region, are in its `group_vars/all/vars.yml`, and its
+credentials in `group_vars/all/vault.yml`. Every deployment directory writes
+out its full setup; two deployments may repeat the same value.
 
 | Variable | Required | Controls |
 |---|---|---|
-| `base_setup_services` | yes | The services with their uid and port, in `inventory/group_vars/homeserver.yml` |
-| `bunker_service_sites` | yes | The proxy site of each public service, in `inventory/group_vars/homeserver.yml` |
+| `base_setup_services` | yes | The services with their uid and port, in the deployment directory |
+| `bunker_service_sites` | yes | The proxy site of each public service, in the deployment directory |
 | `nextcloud_service_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_service_hostname` | no | ntfy's public hostname; empty means no ntfy site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
@@ -148,16 +167,20 @@ one of them repeats all its entries.
 | `base_setup_backup_retention_days` | no | Days a snapshot stays on a target; 90 |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
+| `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
-| `host_tasks_pre` | no | A task file that runs before `base_setup` |
+| `host_tasks_pre` | no | A task file that runs before `base_setup`. On SecureBlue, `platform/secureblue.yml` or a file that includes it |
+
+The functional test also reads `monitoring_service_alert_webhook_token`, part
+of the ntfy wiring of `examples/vm/`.
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
 
-`functional_test.sh <host>` passes further arguments to `ansible`, such as
-`-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also runs a real backup to
-that target.
+`functional_test.sh <host> -i <deployment dir>/inventory.yml` passes further
+arguments to `ansible`, such as `-e ansible_host=<address>`.
+`BACKUP_TARGET=<name>` also runs a real backup to that target.
 
 ## Backup and restore
 
@@ -223,7 +246,7 @@ deploy starts the service again.
 ```bash
 run0 btrfs-restore.sh /var/services/nextcloud /var/services/snapshots/nextcloud/2026-09-29
 run0 btrfs-restore.sh /var/services/nextcloud /var/backup/nas/nextcloud/2026-09-29
-ansible-playbook site.yml -l <host>
+ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
 ```
 
 The first line restores from a local snapshot, the second from a backup
@@ -240,7 +263,7 @@ run0 --setenv=RESTIC_PODMAN_ARGS="-v $S:$S" restic restore <ID>:/data/nextcloud 
 run0 find $S -xdev -perm /6000 \( -uid 0 -o -gid 0 -o -not -path '*/.local/share/containers/*' \) -ls
 run0 getcap -r $S | grep -v rootid
 run0 btrfs-restore.sh /var/services/nextcloud $S
-ansible-playbook site.yml -l <host>
+ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
 ```
 
 The `find` and the `getcap` list what a rootless service does not bring. The
@@ -263,7 +286,7 @@ recognize:download-models`.
 1. Copy `home-server-template` as its `README.md` says, and add the new
    repository: `git submodule add <its URL> services/<name>`.
 2. Add `name`, `uid` and, for a pod that the proxy or another pod reaches,
-   `port` to `base_setup_services` in `inventory/group_vars/homeserver.yml`.
+   `port` to `base_setup_services` in every deployment directory.
    `groups` adds host groups, such as `systemd-journal`.
    The `uid` never changes after the first deploy, because it sets the subuid
    range that owns the service's files.
@@ -288,15 +311,15 @@ The ports in use:
   `RequestTTY=force` and pipelining stays off.
 - **One Btrfs subvolume and one rootless user per service.** A bad deploy
   rolls back one service alone, and a compromised service does not reach
-  another's files. No quotas: qgroups cost too much on a thin client.
+  another's files. No quotas: qgroups cost too much on a small host.
 - **One role deploys every service's Quadlets as one archive.** A changed
   archive replaces the whole Quadlet directory, so a file that leaves a
   repository leaves the host; `home-server-template/README.md`, "Role
   contract", has the steps. One archive replaces one Ansible task per file,
-  which costs seconds each on a thin client.
+  which costs seconds each on a small host.
 - **Memory ceilings are ceilings, not reservations.** The `Memory=` keys add
-  up to more than 8 GB. They stop one container taking the host down. Lower a
-  ceiling before you add a service.
+  up to more than the 8 GB of a small host. They stop one container taking the
+  host down. Lower a ceiling before you add a service.
 - **Container output goes through `passthrough` where it can.** conmon's
   journald driver files every stderr line as `err`. With
   `LogDriver=passthrough` the unit's priority applies. Each service sets it in
@@ -307,9 +330,9 @@ The ports in use:
   exception: it runs as root, so a digest pins it, and Renovate updates it.
   The reboot uses `--check-inhibitors=yes`, so it never interrupts a backup or
   a dump.
-- **The secrets repository is a second inventory.** `ansible.cfg` lists it
-  after this one, so its `group_vars/` and `host_vars/` win over this
-  repository's, and Ansible decrypts them by itself.
+- **A deployment directory is the whole truth for one host.** `ansible.cfg`
+  names no inventory, so a forgotten `-i` fails instead of deploying to the
+  wrong default. Plain vars and Vault credentials sit side by side in it.
 
 ## Security
 
@@ -329,15 +352,16 @@ Covered:
   that the OS image's own `policy.json` admits.
 - A service user opens no connection to a private, shared, link-local,
   multicast or broadcast IPv4 address. The same applies to an IPv6 ULA,
-  link-local or multicast address. This includes the NAS.
+  link-local or multicast address. This includes a NAS on the LAN.
   `service-egress.service` loads an nftables rule on the uids and subuids of
   `base_setup_services`. pasta opens every container connection on the host
   as its user, so the rule covers every container. The internet and the host
   loopback stay open.
-- SSH checks a real host against `ssh/known_hosts` of the secrets repository.
-  Only the inventory entry `test` skips the check.
-- Credentials in the secrets repository are Vault-encrypted. Keep a copy of
-  the Vault password in a password manager: it also guards the LUKS passphrase.
+- SSH checks a real host against `ssh/known_hosts` of its deployment
+  directory. Only the test VM in `examples/vm/` skips the check.
+- A real host's credentials are Vault-encrypted; the throwaway ones in
+  `examples/vm/` are not. Keep a copy of the Vault password in a password
+  manager: it also guards the LUKS passphrase.
 
 Known gaps:
 
@@ -359,7 +383,8 @@ Known gaps:
   monitoring service reads tokens that other units log.
 - A LAN device with a global IPv6 address stays reachable from the
   containers, because the egress rule cannot know the LAN's global prefix.
-- Without CHAP, the NAS admits any LAN device with this host's initiator name.
+- Without CHAP, an iSCSI target admits any LAN device with this host's
+  initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 
 SELinux exceptions:

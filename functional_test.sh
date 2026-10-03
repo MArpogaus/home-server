@@ -1,21 +1,35 @@
 #!/bin/bash
 set -euo pipefail
 
-# Usage: ./functional_test.sh <inventory host> [ansible options]
-HOST="${1:?usage: $0 <inventory host> [ansible options]}"
+# Usage: ./functional_test.sh <host> -i <deployment dir>/inventory.yml [ansible options]
+HOST="${1:?usage: $0 <host> -i <deployment dir>/inventory.yml [ansible options]}"
 shift
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # One inventory lookup gives the connection and the values the checks need. The
 # secrets reach this script through a pipe, never a command line.
+# Ansible's own error goes to a file and is shown when the lookup fails.
+LOOKUP_ERR=$(mktemp)
 mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible.posix.json \
   ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
     ansible_ssh_common_args | default(""), ansible_ssh_private_key_file | default(""),
     base_setup_services | map(attribute="name") | join(" "), nextcloud_service_hostname,
-    monitoring_service_grafana_admin_password, monitoring_service_alert_webhook_token,
-    (base_setup_services | selectattr("name", "eq", "nextcloud") | first).port, ntfy_port] }}' 2>/dev/null \
-  | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
-[[ ${#V[@]} -eq 10 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
+    monitoring_service_grafana_admin_password, monitoring_service_alert_webhook_token | default(""),
+    (base_setup_services | selectattr("name", "eq", "nextcloud") | first).port,
+    base_setup_services | selectattr("name", "eq", "ntfy") | map(attribute="port") | first | default("")] }}' 2>"${LOOKUP_ERR}" \
+  | python3 -c '
+import json, sys
+host = json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]
+if host.get("failed"):
+    sys.exit(host["msg"])
+print("\n".join(map(str, host["msg"])))' "${HOST}" 2>>"${LOOKUP_ERR}")
+if [[ ${#V[@]} -ne 10 ]]; then
+  echo "ERROR: cannot read ${HOST} from the inventory:" >&2
+  grep -v '^Traceback\|^  \|^json.decoder\|^KeyError\|^IndexError' "${LOOKUP_ERR}" >&2
+  rm -f "${LOOKUP_ERR}"
+  exit 1
+fi
+rm -f "${LOOKUP_ERR}"
 TARGET_HOST=${V[0]}
 TARGET_PORT=${V[1]}
 read -ra HOST_KEY_OPTS <<<"${V[2]}"
@@ -76,6 +90,8 @@ run_user() {
 
 [[ "$(remote true)" != __HOST_UNREACHABLE__ ]] \
   || { echo "ERROR: cannot reach core@${TARGET_HOST}:${TARGET_PORT}" >&2; exit 1; }
+remote 'test -e /run/polkit/root-gate && echo open' | grep -q open \
+  || { echo "ERROR: The root gate is closed. Run \`root-gate on\` as core on the host; README.md, \"Deploy\"." >&2; exit 1; }
 
 # The snapshot and backup checks start units whose OnSuccess= chain ends in
 # auto-reboot-staged.service. A runtime drop-in with a condition that never

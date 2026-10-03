@@ -1,13 +1,41 @@
 ---
-- name: Base setup and services
+# Fact gathering already needs Python and root, so these checks use raw only.
+- name: Check that the host is ready
   hosts: all
-  pre_tasks:
+  gather_facts: false
+  become: false
+  tags: always
+  tasks:
     - name: Refuse a run without -l
       ansible.builtin.assert:
         that: ansible_limit is defined
-        fail_msg: Pass -l <host>. Without it the playbook runs on every host of the inventory.
+        fail_msg: Pass -i <deployment dir>/inventory.yml and -l <host>. Without -l the playbook runs on every host of the inventory.
         quiet: true
 
+    - name: Look for Python and the root gate
+      ansible.builtin.raw: test -x /usr/bin/python3 && echo python; test -e /run/polkit/root-gate && echo gate
+      register: base_ready
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Refuse a host without Python
+      ansible.builtin.assert:
+        that: "'python' in base_ready.stdout_lines"
+        fail_msg: >-
+          The host has no /usr/bin/python3. On SecureBlue the platform installs it;
+          wait for the rebase reboot.
+        quiet: true
+
+    - name: Refuse a run while the root gate is closed
+      ansible.builtin.assert:
+        that: "'gate' in base_ready.stdout_lines"
+        fail_msg: The root gate is closed. Run `root-gate on` as core on the host; README.md, "Deploy".
+        quiet: true
+
+- name: Base setup and services
+  hosts: all
+  pre_tasks:
     - name: Locate each service repository in services/
       ansible.builtin.set_fact:
         base_setup_services: >-
