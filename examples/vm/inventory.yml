@@ -1,6 +1,5 @@
 ---
-# The test VM of test/start_vm.py. Deploy it with:
-#   ansible-playbook -i examples/vm site.yml -l test
+# The test VM of test/start_vm.py.
 all:
   hosts:
     test:

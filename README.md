@@ -105,7 +105,7 @@ built from `examples/vm/`. Keep the layout and change these parts:
   `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`,
   as `../home-server-secrets/t630/inventory.yml` does.
 - In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
-  the real values.
+  the real values. Add the probe URLs and the backup target ("Configuration").
 - In `group_vars/all/vault.yml`, set the real credentials. Then encrypt the
   file with `ansible-vault encrypt`.
 
