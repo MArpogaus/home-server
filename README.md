@@ -172,8 +172,8 @@ out its full setup; two deployments may repeat the same value.
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `host_tasks_pre` | no | A task file that runs before `base_setup`. On SecureBlue, `platform/secureblue.yml` or a file that includes it |
 
-The functional test also reads `ntfy_port` and
-`monitoring_service_alert_webhook_token`, the ntfy wiring of `examples/vm/`.
+The functional test also reads `monitoring_service_alert_webhook_token`, part
+of the ntfy wiring of `examples/vm/`.
 
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
