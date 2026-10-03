@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Usage: ./functional_test.sh <host> -i <deployment dir> [ansible options]
-HOST="${1:?usage: $0 <inventory host> [ansible options]}"
+HOST="${1:?usage: $0 <host> -i <deployment dir> [ansible options]}"
 shift
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -15,7 +15,7 @@ mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible
     monitoring_service_grafana_admin_password, monitoring_service_alert_webhook_token,
     (base_setup_services | selectattr("name", "eq", "nextcloud") | first).port, ntfy_port] }}' 2>/dev/null \
   | python3 -c 'import json, sys; print("\n".join(map(str, json.load(sys.stdin)["plays"][0]["tasks"][0]["hosts"][sys.argv[1]]["msg"])))' "${HOST}")
-[[ ${#V[@]} -eq 10 ]] || { echo "ERROR: cannot read ${HOST} from the inventory" >&2; exit 1; }
+[[ ${#V[@]} -eq 10 ]] || { echo "ERROR: cannot read ${HOST} from the inventory (missing -i?)" >&2; exit 1; }
 TARGET_HOST=${V[0]}
 TARGET_PORT=${V[1]}
 read -ra HOST_KEY_OPTS <<<"${V[2]}"
