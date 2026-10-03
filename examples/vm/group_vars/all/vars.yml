@@ -1,6 +1,6 @@
 ---
-# The complete deployment of the test VM (test/start_vm.py). The passwords and
-# tokens are throwaway: only this VM on 127.0.0.1 accepts them. A real host is
+# The complete non-secret deployment of the test VM (test/start_vm.py). Its
+# throwaway credentials live in vault.yml next to this file. A real host is
 # its own deployment directory, as README.md, "Deploy", says.
 
 ansible_user: core
@@ -71,20 +71,3 @@ bunker_service_sites:
       ALLOWED_METHODS: "GET|POST|HEAD|PUT|OPTIONS"
       USE_MODSECURITY: false
       BAD_BEHAVIOR_STATUS_CODES: "400 403 405 444"
-
-# The phone logs in as ntfy; Alertmanager posts as alertmanager; coding agents
-# use their own agent-<name> topics.
-ntfy_service_users:
-  ntfy:
-    password: "0MPRPktw9jzXATJyrZqnljI0KmlLQgdE9C0CzFoS3H5ba"
-    access: {alerts: rw, "agent*": rw}
-  alertmanager:
-    token: "tk_fc7d0a1bd3136395dfba49a5cb7812"
-    access: {alerts: wo}
-  agent:
-    token: "tk_9eb3b6ee8c9c6ec801e5e3f0e17226"
-    access: {"agent*": rw}
-
-nextcloud_service_db_password: "dISQ7YyXUCwdkEGQGC83XMmliekMGgeTv7xxUnbIfEndypEe"
-nextcloud_service_admin_password: "54mWPEO3dhR5SyTn2TvlB3OCe8kQDLvTm7yUUSDlhIOJiVQZ"
-monitoring_service_grafana_admin_password: "0WuVQePwNEyaRFNUk0Uo1dSx2bB4Xo7z2VSJQnic1QcwTACs"
