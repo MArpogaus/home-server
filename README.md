@@ -14,13 +14,11 @@ names every service version it deploys.
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
 | `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts |
 | `home-server-ntfy` | `services/ntfy` | Push notifications, the alerts on the phone |
-| `home-server-secrets` | `../home-server-secrets` | Deployment of the t630: inventory, variables, credentials, `known_hosts`, pre tasks (**private**) |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
 
 ```bash
 git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
-git clone <the private deployment repo> home-server-secrets
 ```
 
 ## Architecture
@@ -64,8 +62,8 @@ Every run names a deployment directory with `-i` and a host with `-l`:
 directory is one host's complete setup: `inventory.yml`,
 `group_vars/all/vars.yml` (plain), `group_vars/all/vault.yml` (credentials),
 and optionally `ssh/known_hosts` and `tasks/pre.yml`, named by
-`host_tasks_pre`. `examples/vm/` is a working example for the test VM; the
-private repository holds one directory per real host.
+`host_tasks_pre`. `examples/vm/` is a working example for the test VM. Keep
+the directory of a real host in a private repository of its own.
 
 The deploy and the functional test escalate with `run0`, which needs the root
 gate open: `root-gate on` on the host asks for core's password once.
@@ -98,8 +96,8 @@ plain text. They are for the test VM only.
 ### Real host
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
-needs 80. A real host is a new directory `../home-server-secrets/<host>/`
-built from `examples/vm/`. Keep the layout and change these parts:
+needs 80. A real host is a new deployment directory built from
+`examples/vm/`. Keep the layout and change these parts:
 
 - First encrypt `group_vars/all/vault.yml` with `ansible-vault encrypt`.
   Then replace every value in it with `ansible-vault edit`, because the
@@ -107,8 +105,7 @@ built from `examples/vm/`. Keep the layout and change these parts:
   `home-server-ntfy/README.md` the form of a token.
 - In `inventory.yml`, set the address, drop `ansible_port` and
   `ansible_ssh_private_key_file`, and replace the SSH options with
-  `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`,
-  as `../home-server-secrets/t630/inventory.yml` does.
+  `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`.
 - In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
   the real values. Add the probe URLs and the backup target ("Configuration").
 
@@ -128,7 +125,7 @@ podman run --rm --security-opt label=disable -v "$PWD":/data -w /data \
 ./build.sh --platform ../platform/secureblue.bu iso fedora-coreos-<version>-live-iso.x86_64.iso \
   /dev/disk/by-id/<target disk>                        # install.iso erases that disk, no prompt
 cd ..
-D=../home-server-secrets/<host>
+D=<deployment dir>
 mkdir -p $D/ssh
 ssh-keyscan -H <address> 2>/dev/null >> $D/ssh/known_hosts
 ssh -t -o UserKnownHostsFile=$D/ssh/known_hosts core@<address> root-gate on
@@ -322,9 +319,9 @@ The ports in use:
   a dump.
 - **A deployment directory is the whole truth for one host.** `ansible.cfg`
   names no inventory, so a forgotten `-i` fails instead of deploying to the
-  wrong default. Plain vars and Vault credentials sit side by side in the
-  private repository, and `examples/vm/` keeps the test VM runnable without
-  it.
+  wrong default. Plain vars and Vault credentials sit side by side in it.
+  A real host keeps its directory private; `examples/vm/` keeps the test VM
+  runnable without one.
 
 ## Security
 
@@ -351,7 +348,7 @@ Covered:
   loopback stay open.
 - SSH checks a real host against `ssh/known_hosts` of its deployment
   directory. Only the `test` host skips the check.
-- Credentials in the deployment repository are Vault-encrypted. Keep a copy of
+- Credentials in a deployment directory are Vault-encrypted. Keep a copy of
   the Vault password in a password manager: it also guards the LUKS passphrase.
 
 Known gaps:
