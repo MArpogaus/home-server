@@ -31,9 +31,6 @@ MEMORY_MB = "8192"
 CPUS = "2"
 DISK_SIZE = "40G"
 SSH_PORT = 2222
-# Unprivileged, so the forwards need no root.
-HTTP_PORT = 8080
-HTTPS_PORT = 8443
 
 
 def fail(msg):
@@ -152,12 +149,7 @@ def boot(ignition_args, listen):
         "-smp", CPUS,
         "-drive", f"file={DISK},format=qcow2,if=virtio",
         *ignition_args,
-        "-netdev", ",".join([
-            "user", "id=net0",
-            f"hostfwd=tcp:{listen}:{SSH_PORT}-:22",
-            f"hostfwd=tcp:{listen}:{HTTP_PORT}-:80",
-            f"hostfwd=tcp:{listen}:{HTTPS_PORT}-:443",
-        ]),
+        "-netdev", f"user,id=net0,hostfwd=tcp:{listen}:{SSH_PORT}-:22",
         "-device", "virtio-net-pci,netdev=net0",
         "-display", "none",
         "-serial", "mon:stdio",

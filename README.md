@@ -75,8 +75,8 @@ once.
 
 The VM needs `qemu-system-x86_64` with `/dev/kvm`, `qemu-img`, `unxz`,
 `ssh-keygen`, `openssl` and `podman`. core's password on the VM is `test`, or
-`VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes SSH, HTTP
-and HTTPS on `127.0.0.1:2222`, `:8080` and `:8443`.
+`VM_PASSWORD`. It has 8 GB and 2 vCPUs, and publishes only SSH on
+`127.0.0.1:2222`; the functional test checks the web ports on the VM itself.
 
 ```bash
 python3 test/start_vm.py --fresh --platform platform/secureblue.bu   # terminal 1
