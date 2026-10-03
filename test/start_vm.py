@@ -26,7 +26,7 @@ URL = (f"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/"
        f"{FCOS_VERSION}/x86_64/fedora-coreos-{FCOS_VERSION}-qemu.x86_64.qcow2.xz")
 
 BASE_SNAPSHOT = "base"
-# Match the 8 GB target, so a cold start is not tested under false pressure.
+# 8 GB, as on a small host, so a cold start is not tested under false pressure.
 MEMORY_MB = "8192"
 CPUS = "2"
 DISK_SIZE = "40G"

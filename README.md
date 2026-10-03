@@ -90,8 +90,6 @@ python3 test/start_vm.py --restore     # back to "base"
 `--fresh` deletes the disk and its `base` snapshot. For a controller in a
 container, start the VM with `--listen <address>`. Then use `<address>` in the
 `ssh` line and add `-e ansible_host=<address>` to the playbook and the test.
-`examples/vm/group_vars/all/vault.yml` holds throwaway passwords and tokens in
-plain text. They are for the test VM only.
 
 ### Real host
 
@@ -303,15 +301,15 @@ The ports in use:
   `RequestTTY=force` and pipelining stays off.
 - **One Btrfs subvolume and one rootless user per service.** A bad deploy
   rolls back one service alone, and a compromised service does not reach
-  another's files. No quotas: qgroups cost too much on a thin client.
+  another's files. No quotas: qgroups cost too much on a small host.
 - **One role deploys every service's Quadlets as one archive.** A changed
   archive replaces the whole Quadlet directory, so a file that leaves a
   repository leaves the host; `home-server-template/README.md`, "Role
   contract", has the steps. One archive replaces one Ansible task per file,
-  which costs seconds each on a thin client.
+  which costs seconds each on a small host.
 - **Memory ceilings are ceilings, not reservations.** The `Memory=` keys add
-  up to more than 8 GB. They stop one container taking the host down. Lower a
-  ceiling before you add a service.
+  up to more than the 8 GB of a small host. They stop one container taking the
+  host down. Lower a ceiling before you add a service.
 - **Container output goes through `passthrough` where it can.** conmon's
   journald driver files every stderr line as `err`. With
   `LogDriver=passthrough` the unit's priority applies. Each service sets it in
@@ -344,7 +342,7 @@ Covered:
   that the OS image's own `policy.json` admits.
 - A service user opens no connection to a private, shared, link-local,
   multicast or broadcast IPv4 address. The same applies to an IPv6 ULA,
-  link-local or multicast address. This includes the NAS.
+  link-local or multicast address. This includes a NAS on the LAN.
   `service-egress.service` loads an nftables rule on the uids and subuids of
   `base_setup_services`. pasta opens every container connection on the host
   as its user, so the rule covers every container. The internet and the host
@@ -375,7 +373,8 @@ Known gaps:
   monitoring service reads tokens that other units log.
 - A LAN device with a global IPv6 address stays reachable from the
   containers, because the egress rule cannot know the LAN's global prefix.
-- Without CHAP, the NAS admits any LAN device with this host's initiator name.
+- Without CHAP, an iSCSI target admits any LAN device with this host's
+  initiator name.
   LUKS stops it from reading the backups, not from overwriting them.
 
 SELinux exceptions:
