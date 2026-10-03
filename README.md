@@ -95,7 +95,8 @@ container, start the VM with `--listen <address>`. Then use `<address>` in the
 
 Point the DNS names at the host and forward only 80 and 443; Let's Encrypt
 needs 80. A real host is a new deployment directory built from
-`examples/vm/`. Keep the layout and change these parts:
+`examples/vm/`. Keep the layout, rewrite the header comments of the copied
+files, and change these parts:
 
 - First encrypt `group_vars/all/vault.yml` with `ansible-vault encrypt`.
   Then replace every value in it with `ansible-vault edit`, because the
