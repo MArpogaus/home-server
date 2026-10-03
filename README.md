@@ -103,8 +103,9 @@ needs 80. A real host is a new deployment directory built from
   Then replace every value in it with `ansible-vault edit`, because the
   example values are public. "Configuration" gives the form of a password,
   `home-server-ntfy/README.md` the form of a token.
-- In `inventory.yml`, set the address, drop `ansible_port` and
-  `ansible_ssh_private_key_file`, and replace the SSH options with
+- In `inventory.yml`, rename the host `test`, set the address, drop
+  `ansible_port` and `ansible_ssh_private_key_file`, and replace the SSH
+  options with
   `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`.
 - In `group_vars/all/vars.yml`, drop the self-signed and `-dev` lines and set
   the real values. Add the probe URLs and the backup target ("Configuration").
@@ -347,7 +348,7 @@ Covered:
   as its user, so the rule covers every container. The internet and the host
   loopback stay open.
 - SSH checks a real host against `ssh/known_hosts` of its deployment
-  directory. Only the `test` host skips the check.
+  directory. Only the test VM in `examples/vm/` skips the check.
 - Credentials in a deployment directory are Vault-encrypted. Keep a copy of
   the Vault password in a password manager: it also guards the LUKS passphrase.
 

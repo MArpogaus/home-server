@@ -1,6 +1,6 @@
 ---
-# The throwaway credentials of the test VM, in plain text. On a real host this
-# file holds the real ones and is encrypted with `ansible-vault encrypt`.
+# The throwaway credentials of the test VM, in plain text. README.md, "Real
+# host", says how a real host encrypts and replaces them.
 
 # The phone logs in as ntfy; Alertmanager posts as alertmanager; coding agents
 # use their own agent-<name> topics.
