@@ -103,8 +103,8 @@ built from `examples/vm/`. Keep the layout and change these parts:
 
 - First encrypt `group_vars/all/vault.yml` with `ansible-vault encrypt`.
   Then replace every value in it with `ansible-vault edit`, because the
-  example values are public. `openssl rand -base64 36` makes a password;
-  `home-server-ntfy/README.md` gives the form of a token.
+  example values are public. "Configuration" gives the form of a password,
+  `home-server-ntfy/README.md` the form of a token.
 - In `inventory.yml`, set the address, drop `ansible_port` and
   `ansible_ssh_private_key_file`, and replace the SSH options with
   `-o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ inventory_dir }}/ssh/known_hosts`,
@@ -168,9 +168,9 @@ out its full setup; two deployments may repeat the same value.
 Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `openssl rand -base64 48 | tr -d '/+=' | cut -c1-48`.
 
-`functional_test.sh <host>` passes further arguments to `ansible`, such as
-`-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also runs a real backup to
-that target.
+`functional_test.sh <host> -i <deployment dir>` passes further arguments to
+`ansible`, such as `-e ansible_host=<address>`. `BACKUP_TARGET=<name>` also
+runs a real backup to that target.
 
 ## Backup and restore
 
