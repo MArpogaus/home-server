@@ -4,8 +4,9 @@
     # An unset, null or empty value compares as ''; no regex means not empty.
     that: lookup('vars', item.key, default='') | default('', true) | string is match(item.value or '.')
     fail_msg: >-
-      Set {{ item.key }}{{ (' to match ' ~ item.value) if item.value else '' }}.
-      home-server-{{ service_name }}/README.md, "Configuration".
+      {% if item.key == 'service_port' %}Give the {{ service_name }} entry of base_setup_services a port.
+      home-server/README.md, "Adding a service".{% else %}Set {{ item.key }}{{ (' to match ' ~ item.value) if item.value else '' }}.
+      home-server-{{ service_name }}/README.md, "Configuration".{% endif %}
     quiet: true
   loop: "{{ quadlet_service_required | dict2items }}"
   loop_control:
