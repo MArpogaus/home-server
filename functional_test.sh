@@ -217,6 +217,11 @@ check_output "HTTP redirects to HTTPS" \
 check_output "HTTPS reaches Nextcloud through the proxy" \
   "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/status.php" \
   '"installed":true'
+# A running push container can still wait for its app; only notify_push itself
+# answers the WebSocket upgrade with 101.
+check_output "Push answers a WebSocket upgrade through the proxy" \
+  "curl -sk --http1.1 --max-time 5 -o /dev/null -w %{http_code} -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/push/ws" \
+  "^101$"
 # Through the host's own LAN address the reply goes to a private address, as
 # for a client on the LAN.
 check_output "HTTPS answers a client on the LAN" \
