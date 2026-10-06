@@ -41,7 +41,6 @@ if [ -z "${SSH_PUBLIC_KEY}" ]; then
 fi
 echo "Authorising: ${SSH_PUBLIC_KEY%% *} ...${SSH_PUBLIC_KEY##* }"
 
-# core's password: the console and root-gate ask for it.
 if [ -z "${PASSWORD_HASH:-}" ]; then
 	command -v mkpasswd >/dev/null || { echo "ERROR: mkpasswd not found; set PASSWORD_HASH"; exit 1; }
 	echo "Password for the 'core' user (console and root-gate):"
@@ -65,7 +64,6 @@ echo "Wrote ${IGNITION}"
 case "${MODE}" in
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
-	# coreos-installer refuses to replace an existing output file.
 	rm -f "${SCRIPT_DIR}/install.iso"
 	podman run --rm --security-opt label=disable \
 		-v "${SCRIPT_DIR}":/data -v "${SRC_DIR}":/iso -w /data \
