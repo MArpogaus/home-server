@@ -229,8 +229,8 @@ Add the `uuid` and a `name` to `base_setup_backup_targets` and deploy again.
 Read a file back from `/var/backup/<name>/<service>/<date>` after the first
 backup, before you trust the target.
 
-Once a month `btrfs-scrub@<path>.timer` scrubs the host (through `/var`, as
-`/sysroot` is read-only) and each target. A scrub reads every block and
+At `base_setup_scrub_time`, `btrfs-scrub@<path>.timer` scrubs the host
+(through `/var`, as `/sysroot` is read-only) and each target. A scrub reads every block and
 checks it against its checksum. An error it cannot repair fails the unit, and
 `ScheduledJobFailed` fires.
 

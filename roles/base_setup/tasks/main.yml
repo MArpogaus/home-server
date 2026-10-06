@@ -195,7 +195,7 @@
   register: base_setup_scrub_timers
   changed_when: false
 
-- name: Enable the monthly scrubs
+- name: Enable the scrubs
   ansible.builtin.systemd_service:
     name: "{{ item }}"
     enabled: true
