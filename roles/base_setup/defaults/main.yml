@@ -7,6 +7,7 @@ base_setup_snapshot_time: "00:00"
 base_setup_restic_time: "01:00"
 base_setup_update_time: "02:00"
 base_setup_reboot_time: "03:00"
+base_setup_scrub_time: monthly
 
 base_setup_backup_targets: []
 base_setup_backup_retention_days: 90

@@ -2,7 +2,7 @@
 Description=Monthly Btrfs scrub of %f
 
 [Timer]
-OnCalendar=monthly
+OnCalendar={{ base_setup_scrub_time }}
 RandomizedDelaySec=6h
 Persistent=true
 

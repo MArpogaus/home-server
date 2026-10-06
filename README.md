@@ -190,6 +190,7 @@ arguments to `ansible`, such as `-e ansible_host=<address>`.
 | `base_setup_restic_time` | `01:00` | restic copies the newest snapshots |
 | `base_setup_update_time` | `02:00` | `podman auto-update` per service user, up to 15 min later; a missed run waits for the next night |
 | `base_setup_reboot_time` | `03:00` | Reboot into a staged deployment, up to 30 min later; a finished send reboots earlier |
+| `base_setup_scrub_time` | `monthly` | Btrfs scrub of the host and of each backup target, up to 6 h later |
 
 The values are systemd calendar times in quotes, such as `"04:30"`: YAML
 reads an unquoted `4:30` as a number. Keep the updates after the snapshots,
