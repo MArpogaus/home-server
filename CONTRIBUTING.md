@@ -50,8 +50,9 @@ here, and then release this repository as in "Releases".
 
 ## House style
 
-A comment says why, never what. Longer reasoning belongs in the README of the
-repository that owns the code. Write the prose in Simplified Technical English:
+Code carries no comments, except tool directives such as `shellcheck` or
+`noqa`. The README of the repository that owns the code holds what an operator
+needs. Write the prose in Simplified Technical English:
 short sentences, one meaning per word, and the condition before the command.
 
 ## Checks in this repository
