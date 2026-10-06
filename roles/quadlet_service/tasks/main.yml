@@ -27,6 +27,10 @@
          | select('match', '^' ~ service_name ~ '-[^/]+[.]container([.]j2)?$')
          | map('regex_replace', '^' ~ service_name ~ '-', '') | map('regex_replace', '[.]container([.]j2)?$', '') | list }}
 
+- name: Dump the database before each snapshot
+  ansible.builtin.include_tasks: db_dump.yml
+  when: quadlet_service_db_dump | length > 0
+
 - name: Store the secrets as Podman secrets
   become: true
   become_user: "{{ service_name }}"
