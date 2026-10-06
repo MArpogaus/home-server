@@ -170,6 +170,7 @@ out its full setup; two deployments may repeat the same value.
 | `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
+| `base_setup_zram_size` | no | Size of the compressed swap in RAM, in zram-generator syntax; `min(ram / 2, 4096)` (MB) |
 | `host_tasks_pre` | no | A task file that runs before `base_setup`. On SecureBlue, `platform/secureblue.yml` or a file that includes it |
 
 The functional test also reads `monitoring_service_alert_webhook_token`, part

@@ -291,7 +291,7 @@
     mode: "0644"
     content: |
       [zram0]
-      zram-size = min(ram / 2, 4096)
+      zram-size = {{ base_setup_zram_size }}
       compression-algorithm = zstd
   notify: Start zram swap
 

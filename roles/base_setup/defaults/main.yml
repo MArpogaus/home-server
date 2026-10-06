@@ -9,6 +9,8 @@ base_setup_update_time: "02:00"
 base_setup_reboot_time: "03:00"
 base_setup_scrub_time: monthly
 
+base_setup_zram_size: min(ram / 2, 4096)
+
 base_setup_backup_targets: []
 base_setup_backup_retention_days: 90
 
