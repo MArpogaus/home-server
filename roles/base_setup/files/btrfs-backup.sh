@@ -1,6 +1,4 @@
 #!/bin/bash
-# Incremental `btrfs send` of the newest snapshot of every service to the
-# target named by the instance: btrfs-backup@<name>.
 set -euo pipefail
 shopt -s nullglob
 
@@ -11,8 +9,6 @@ DEST="${BACKUP_ROOT:?}/${TARGET}"
 TEXTFILE_DIR="${NODE_TEXTFILE_DIR:?}"
 CUTOFF="$(date -d "-${RETENTION_DAYS:?} days" +%Y-%m-%d)"
 
-# A path that is no subvolume is a partial receive. Output without the field
-# counts as received, because deleting a good copy is the worse error.
 received() {
 	local out
 	out="$(btrfs subvolume show "$1" 2>/dev/null)" || return 1
@@ -23,8 +19,6 @@ received() {
 	grep -qE 'Received UUID:\s+[0-9a-f-]{36}' <<<"${out}"
 }
 
-# Dated names up to today, oldest first. A hand-made or future-dated name
-# never becomes the latest.
 snapshots() {
 	local today
 	today="$(date +%Y-%m-%d)"
@@ -38,8 +32,6 @@ received_snapshots() {
 	done
 }
 
-# The target filesystem carries no SELinux label, and node-exporter statfs()es
-# its root.
 chcon -t container_file_t "${DEST}" || echo "WARNING: cannot label ${DEST}" >&2
 
 copied=0
@@ -48,8 +40,6 @@ for src in "${SNAP_DIR}"/*/; do
 	svc="$(basename "${src}")"
 	mkdir -p "${DEST}/${svc}"
 
-	# A partial receive leaves at most one unreceived copy. More than one means
-	# the test is wrong, so nothing of this service is deleted.
 	partial=()
 	for snap in "${DEST}/${svc}"/????-??-??; do
 		[ -d "${snap}" ] || continue
@@ -86,8 +76,6 @@ for src in "${SNAP_DIR}"/*/; do
 	fi
 	copied=$((copied + 1))
 
-	# The copy of the latest snapshot stays, however old: a service whose
-	# snapshots stopped would otherwise lose its last backup.
 	for snap in "${DEST}/${svc}"/????-??-??; do
 		[ -d "${snap}" ] || continue
 		[ "$(basename "${snap}")" = "${latest}" ] && continue

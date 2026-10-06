@@ -1,14 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# Usage: ./functional_test.sh <host> -i <deployment dir>/inventory.yml [ansible options]
 HOST="${1:?usage: $0 <host> -i <deployment dir>/inventory.yml [ansible options]}"
 shift
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-# One inventory lookup gives the connection and the values the checks need. The
-# secrets reach this script through a pipe, never a command line.
-# Ansible's own error goes to a file and is shown when the lookup fails.
 LOOKUP_ERR=$(mktemp)
 mapfile -t V < <(ANSIBLE_LOAD_CALLBACK_PLUGINS=1 ANSIBLE_STDOUT_CALLBACK=ansible.posix.json \
   ansible "${HOST}" "$@" -m debug -a 'msg={{ [ansible_host, ansible_port | default(22),
@@ -42,8 +38,6 @@ NTFY_PORT=${V[9]}
 
 CTL_DIR=$(mktemp -d)
 HOLD=/run/systemd/system/auto-reboot-staged.service.d/functional-test.conf
-# The host waits for the snapshots and backups that the test started, so a lost
-# connection does not keep the hold.
 RELEASE="while [ -n \"\$(systemctl list-jobs --no-legend 'btrfs-snapshot@*' 'btrfs-backup@*')\" ]; do sleep 10; done
 rm -rf ${HOLD%/*}
 systemctl daemon-reload"
@@ -57,7 +51,6 @@ trap 'release_hold; rm -rf "${CTL_DIR}"' EXIT
 SSH=(ssh -p "${TARGET_PORT}" "${SSH_OPTS[@]}" -o LogLevel=ERROR
      -o ControlMaster=auto -o ControlPersist=60s -o ControlPath="${CTL_DIR}/%C"
      "core@${TARGET_HOST}")
-# Name of a configured backup target to check, e.g. usb. Empty skips it.
 BACKUP_TARGET="${BACKUP_TARGET:-}"
 PASS=0
 FAIL=0
@@ -65,10 +58,6 @@ FAIL=0
 pass() { PASS=$((PASS+1)); echo "  PASS: $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  FAIL: $1"; }
 
-# 255 is ssh's own failure; every other status is the remote command's, which
-# several checks expect to be non-zero while still printing a value. The
-# optional second argument is the remote stdin, so a credential stays off
-# every command line; without it stdin is empty.
 remote() {
   local out rc=0
   out=$(printf '%s' "${2-}" | "${SSH[@]}" "$1" 2>/dev/null) || rc=$?
@@ -93,23 +82,15 @@ run_user() {
 remote 'test -e /run/polkit/root-gate && echo open' | grep -q open \
   || { echo "ERROR: The root gate is closed. Run \`root-gate on\` as core on the host; README.md, \"Deploy\"." >&2; exit 1; }
 
-# The snapshot and backup checks start units whose OnSuccess= chain ends in
-# auto-reboot-staged.service. A runtime drop-in with a condition that never
-# holds makes systemd skip it; a mask would lose to the unit in /etc.
-# From here on a release runs at exit: it is harmless when nothing was held.
 HELD=1
 run_root "systemctl stop functional-test-release.service 2>/dev/null; mkdir -p ${HOLD%/*} && printf '[Unit]\\nConditionPathExists=/nonexistent\\n' > ${HOLD} && systemctl daemon-reload && echo held" |
   grep -q held || { echo "ERROR: cannot hold the staged reboot" >&2; exit 1; }
 
-# As core, with `lq <path> [curl args]` querying Loki through Grafana's
-# datasource proxy. The admin credential travels on ssh stdin.
 GRAFANA_CFG=$(printf 'user = "admin:%s"\n' "${V[6]}")
 run_loki() {
   remote "bash -c 'cfg=\$(cat); lq() { curl -sf -K <(printf %s \"\$cfg\") \"http://127.0.0.2:3000/api/datasources/proxy/uid/loki\$@\"; }; eval \"\$(echo $(b64 "$1") | base64 -d)\"'" "${GRAFANA_CFG}"
 }
 
-# Both numbers of the ruler's notifier, on one line. A series Loki has not
-# created yet reads as 0 rather than an empty field.
 NOTIFY_AWK="awk '/^loki_prometheus_notifications_sent_total/{s=\$2} /^loki_prometheus_notifications_errors_total/{e=\$2} END{print (s+0) \" \" (e+0)}'"
 
 expect() {
@@ -128,16 +109,13 @@ echo "=== Functional tests ==="
 echo ""
 
 echo "--- Btrfs Subvolumes ---"
-# A nested subvolume stays out of every snapshot and backup.
 check_output "custom_apps is a nested subvolume" \
   "btrfs subvolume show /var/services/nextcloud/data/custom_apps" "Subvolume ID"
 
 LAN_IP="\$(ip -4 route get 1.1.1.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2)"
 
 echo "--- Egress ---"
-# bash exits 1 when the rule refuses the connection to sshd on the host's own
-# LAN address. A container on the host network runs as a subuid.
-# shellcheck disable=SC2016 # expands on the host
+# shellcheck disable=SC2016
 SSH_CONNECT='timeout 5 bash -c "</dev/tcp/$ip/22" 2>/dev/null; echo $?'
 check_user_output nextcloud "A service user reaches no private address" \
   "ip=${LAN_IP}; ${SSH_CONNECT}" "^1$"
@@ -145,8 +123,6 @@ check_user_output nextcloud "A subuid reaches no private address" \
   "ip=${LAN_IP}; podman unshare setpriv --reuid 1000 --regid 1000 --clear-groups ${SSH_CONNECT}" "^1$"
 
 echo "--- SELinux Labels ---"
-# A label stays on disk once set, so the data check catches a missing z or Z
-# on a fresh host only.
 check_user_output nextcloud "Nextcloud logs to the journal" \
   "podman exec -u www-data nextcloud-app php occ log:manage" "backend: syslog"
 check_output "Nextcloud's files are container_file_t" \
@@ -155,16 +131,11 @@ check_output "Alloy's config is relabelled for the container" \
   "stat -c %C /var/services/monitoring/.config/containers/systemd/configs/config.alloy" \
   "container_file_t"
 echo "--- Auto-reboot Timer ---"
-# Anchored: enabled-runtime is gone after a reboot.
 check_output "Auto-reboot timer enabled" "systemctl is-enabled auto-reboot-staged.timer" "^enabled$"
-# A rollback disables this timer, and no role enables it. Stock Fedora CoreOS
-# stages with Zincati instead.
 check_output "Update staging enabled" "systemctl is-enabled rpm-ostreed-automatic.timer zincati.service" "^enabled$"
 
 echo "--- Containers ---"
-# Every Quadlet container of a service runs, and none reports unhealthy. Retried:
-# a deploy that pulled a new image restarts the pod.
-# shellcheck disable=SC2016  # expanded by the service user's shell
+# shellcheck disable=SC2016
 CONTAINERS_CMD='units=$(ls "$HOME"/.config/containers/systemd/*.container | xargs -n1 basename | sed "s/\.container$/.service/")
 echo "units=$(echo $units | wc -w) inactive=$(systemctl --user is-active $units | grep -cvx active) unhealthy=$(podman ps --filter health=unhealthy -q | wc -l)"'
 for svc in ${SERVICES}; do
@@ -182,7 +153,6 @@ check_output "status.php answers on the loopback port" "curl -sf http://127.0.0.
 echo "--- pg_dumpall ---"
 check_output "pg_dumpall produces a dump" \
   "systemctl start nextcloud-pg-dumpall.service && systemctl is-failed nextcloud-pg-dumpall.service" "inactive"
-# A truncated dump still has bytes, so assert the structure a restore needs.
 LATEST_DUMP="\$(find /var/services/nextcloud/data/db_dumps -name 'dump-*.sql' | sort | tail -1)"
 check_output "dump contains the database and roles" \
   "grep -lE '^CREATE DATABASE' ${LATEST_DUMP}" "dump-"
@@ -196,34 +166,22 @@ check_output "snapshot service succeeds" \
   "systemctl start btrfs-snapshot@nextcloud.service && systemctl is-failed btrfs-snapshot@nextcloud.service" "inactive"
 
 echo "--- Loki Reachability ---"
-# A query, not the label list: a label value outlives the lines that made it.
-# Retried, because a deploy restarts Alloy.
 check_loki "Loki received journal lines in the last 10 minutes" \
   "for i in \$(seq 1 18); do out=\$(lq /loki/api/v1/query -G --data-urlencode 'query=sum(count_over_time({job=\"systemd-journal\"}[10m]))'); case \"\$out\" in *'\"value\"'*) break;; esac; sleep 5; done; echo \"\$out\"" \
   '"value"'
-# A rule whose query does not compile loads and then evaluates to "err".
 check_loki "Every Loki alert rule evaluates" \
   "lq /prometheus/api/v1/rules | ${RULES_HEALTH}" \
   "^err=0 ok=[1-9]"
 
 echo "--- HTTP/HTTPS ---"
-# DISABLE_DEFAULT_SERVER drops a request whose Host or SNI matches no server.
-# With TLS, BunkerWeb redirects HTTP to HTTPS with 301 or 308.
 check_output "HTTP redirects to HTTPS" \
   "curl -s -o /dev/null -w %{http_code} -H 'Host: ${SERVER_NAME}' http://127.0.0.1:80" "30[18]"
-# status.php, not /, which redirects to /login. Proves TLS, the proxy's site,
-# nginx, php-fpm and the database in one request; 127.0.0.1 is on BunkerWeb's
-# whitelist, so the WAF checks are not part of it. A wrong upstream gives 502.
 check_output "HTTPS reaches Nextcloud through the proxy" \
   "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/status.php" \
   '"installed":true'
-# A running push container can still wait for its app; only notify_push itself
-# answers the WebSocket upgrade with 101.
 check_output "Push answers a WebSocket upgrade through the proxy" \
   "curl -sk --http1.1 --max-time 5 -o /dev/null -w %{http_code} -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' --resolve ${SERVER_NAME}:443:127.0.0.1 https://${SERVER_NAME}/push/ws" \
   "^101$"
-# Through the host's own LAN address the reply goes to a private address, as
-# for a client on the LAN.
 check_output "HTTPS answers a client on the LAN" \
   "curl -sk --max-time 15 --resolve ${SERVER_NAME}:443:${LAN_IP} https://${SERVER_NAME}/status.php" \
   '"installed":true'
@@ -232,7 +190,6 @@ if [[ " ${SERVICES} " == *" ntfy "* ]]; then
   echo "--- ntfy ---"
   check_output "ntfy refuses anonymous publishing" \
     "curl -s -o /dev/null -w %{http_code} -d probe http://127.0.0.1:${NTFY_PORT}/alerts" "^403$"
-  # The token travels on ssh stdin into curl's config, so it is on no command line.
   expect "ntfy accepts the token" \
     "$(remote 'curl -s -o /dev/null -w %{http_code} -K - -H "Title: functional test" -d "functional test" http://127.0.0.1:'"${NTFY_PORT}"'/alerts' \
       "$(printf 'header = "Authorization: Bearer %s"\n' "${V[7]}")")" \
@@ -243,10 +200,7 @@ if [[ " ${SERVICES} " == *" ntfy "* ]]; then
     "^403$"
 fi
 
-# One burst of failed logins walks the whole path: journald, Alloy, Loki, the
-# ruler and Alertmanager.
 echo "--- Alerting end to end ---"
-# Cumulative counters, so the delivery check compares against these.
 NOTIFY_BEFORE=$(run_loki "lq /metrics | ${NOTIFY_AWK}")
 PROBE_KEY=$(mktemp -u)
 ssh-keygen -q -t ed25519 -N "" -f "${PROBE_KEY}"
@@ -256,7 +210,6 @@ for _ in $(seq 1 8); do
       "core@${TARGET_HOST}" true </dev/null 2>/dev/null || true
 done
 rm -f "${PROBE_KEY}" "${PROBE_KEY}.pub"
-# Reports the hop it reached: the shipper, the ruler API, or the rule.
 check_loki "Failed logins make SshLoginFailed fire" \
   "for i in \$(seq 1 18); do
      line=\$(lq /loki/api/v1/query -G --data-urlencode 'query=sum(count_over_time({job=\"systemd-journal\", unit=\"sshd.service\"} |~ \"Connection closed by authenticating\" [5m]))' | grep -c '\"value\"')
@@ -279,7 +232,6 @@ check_loki "The ruler delivers to Alertmanager" \
   "^ok$"
 
 echo "--- Prometheus ---"
-# The filesystem collector fails silently: the scrape still succeeds.
 check_output "The disk metric HostLowDiskSpace reads exists" \
   "curl -sf --get http://127.0.0.2:9090/api/v1/query --data-urlencode 'query=count(node_filesystem_avail_bytes{mountpoint=\"/var\"})'" \
   '"value":\[[0-9.]*,"1"\]'
@@ -289,13 +241,10 @@ check_output "The textfile metrics are scraped" \
 check_output "Every Prometheus alert rule evaluates" \
   "curl -sf http://127.0.0.2:9090/api/v1/rules | ${RULES_HEALTH}" \
   "^err=0 ok=[1-9]"
-# A host without probe URLs has no probe_success series and reads 1.
 check_output "Blackbox probes succeed" \
   "curl -sfG http://127.0.0.2:9090/api/v1/query --data-urlencode 'query=min(probe_success) or vector(1)'" '"1"\]'
 
 echo "--- Capabilities ---"
-# SYS_CHROOT is in Podman's default set and no container adds it back, so
-# seeing it means the drop-in did not apply. Infra containers are excluded.
 CAPS_FILE="${CTL_DIR}/caps"
 for svc in ${SERVICES}; do
   run_user "$svc" "podman ps -a --format '{{.Names}}' | grep -v -- '-infra\$' | xargs -r podman inspect --format '{{.Name}} {{.EffectiveCaps}}'" >> "${CAPS_FILE}"
@@ -322,7 +271,6 @@ if [[ -n "${BACKUP_TARGET}" ]]; then
 fi
 
 echo "--- logind ---"
-# Last, after every run0 call above.
 check_output "No logind session is stuck in closing" \
   "for s in \$(loginctl list-sessions --no-legend | awk '{print \$1}'); do loginctl show-session \"\$s\" -p State --value; done | grep -c closing" \
   "^[0-4]$"

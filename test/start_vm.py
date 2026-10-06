@@ -15,7 +15,6 @@ import urllib.request
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FCOS_VERSION = "44.20260510.3.1"
-# images.qemu.sha256 of the build's meta.json; it moves with FCOS_VERSION.
 FCOS_SHA256 = "b8f0ae906a1ff357b9f5e62eb7f64ee19a42d01a16d9ac4d2132380601aa84da"
 DISK = os.path.join(TEST_DIR, "fcos.qcow2")
 DISK_XZ = DISK + ".xz"
@@ -26,16 +25,13 @@ URL = (f"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/"
        f"{FCOS_VERSION}/x86_64/fedora-coreos-{FCOS_VERSION}-qemu.x86_64.qcow2.xz")
 
 BASE_SNAPSHOT = "base"
-# 8 GB, as on a small host, so a cold start is not tested under false pressure.
 MEMORY_MB = "8192"
 CPUS = "2"
 DISK_SIZE = "40G"
 SSH_PORT = 2222
 
-
 def fail(msg):
     sys.exit(f"ERROR: {msg}")
-
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
@@ -53,12 +49,10 @@ def parse_args(argv=None):
                         help="Butane fragment merged into the config on --fresh")
     return parser.parse_args(argv)
 
-
 def save_base_snapshot():
     """Tag the current disk state so a reset is a rollback, not a rebuild."""
     if not os.path.exists(DISK):
         fail(f"No disk at {DISK}")
-    # Before the delete below, so a locked disk keeps its old snapshot.
     busy = subprocess.run(["qemu-img", "snapshot", "-l", DISK],
                           capture_output=True, text=True)
     if busy.returncode != 0:
@@ -71,7 +65,6 @@ def save_base_snapshot():
         fail(f"Could not snapshot (is the VM still running?):\n{result.stderr}")
     print(f'Saved snapshot "{BASE_SNAPSHOT}". Roll back with --restore.')
 
-
 def restore_base_snapshot():
     result = subprocess.run(["qemu-img", "snapshot", "-a", BASE_SNAPSHOT, DISK],
                             capture_output=True, text=True)
@@ -80,13 +73,11 @@ def restore_base_snapshot():
              f"(take one with --save-base):\n{result.stderr}")
     print(f'Rolled back to "{BASE_SNAPSHOT}"')
 
-
 def ensure_ssh_key():
     if not os.path.exists(SSH_KEY):
         print(f"Creating SSH key: {SSH_KEY}")
         subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", SSH_KEY, "-N", "",
                         "-C", "coreos"], check=True, capture_output=True)
-
 
 def ensure_disk(fresh):
     """Download and extract the image if needed.
@@ -109,7 +100,6 @@ def ensure_disk(fresh):
             fail(f"{DISK_XZ} does not match FCOS_SHA256; deleted it")
         print("Extracting disk image")
         subprocess.run(["unxz", "-k", DISK_XZ], check=True)
-        # A disk left at its download size fills up on the first deploy.
         try:
             subprocess.run(["qemu-img", "resize", DISK, DISK_SIZE], check=True)
         except (OSError, subprocess.CalledProcessError):
@@ -117,14 +107,12 @@ def ensure_disk(fresh):
             raise
     print(f"Disk: {os.path.getsize(DISK) // 1024 // 1024} MB")
 
-
 def build_ignition(platform):
     """Hand the key and the password to ignition/build.sh, the one renderer."""
     env = dict(os.environ)
     with open(SSH_KEY + ".pub") as handle:
         env["SSH_PUBLIC_KEY"] = handle.read().strip()
 
-    # root-gate on the VM asks for it.
     password = os.environ.get("VM_PASSWORD", "test")
     env["PASSWORD_HASH"] = subprocess.run(
         ["openssl", "passwd", "-6", "-stdin"], input=password,
@@ -136,9 +124,8 @@ def build_ignition(platform):
     if result.returncode != 0:
         fail(f"build.sh failed:\n{result.stdout}{result.stderr}")
     with open(IGNITION) as handle:
-        json.load(handle)  # refuse to boot a truncated config
+        json.load(handle)
     print("Generated config.ign")
-
 
 def boot(ignition_args, listen):
     subprocess.run([
@@ -154,7 +141,6 @@ def boot(ignition_args, listen):
         "-display", "none",
         "-serial", "mon:stdio",
     ], check=True)
-
 
 def main(argv=None):
     args = parse_args(argv)
@@ -173,7 +159,6 @@ def main(argv=None):
     ensure_disk(args.fresh)
 
     if args.restore:
-        # Ignition runs on first boot only, so it would ignore the config.
         ignition_args = []
     else:
         build_ignition(args.platform)
@@ -183,7 +168,6 @@ def main(argv=None):
           f"-o UserKnownHostsFile=/dev/null core@localhost   Stop: Ctrl+C")
     boot(ignition_args, args.listen)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,7 +1,6 @@
 ---
 - name: Assert the required variables are set
   ansible.builtin.assert:
-    # An unset, null or empty value compares as ''; no regex means not empty.
     that: lookup('vars', item.key, default='') | default('', true) | string is match(item.value or '.')
     fail_msg: >-
       {% if item.key == 'service_port' %}Give the {{ service_name }} entry of base_setup_services a port.
@@ -12,11 +11,14 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Assert every container has a memory ceiling
+- name: Assert every container has a memory ceiling and every CPU quota a container
   ansible.builtin.assert:
-    that: quadlet_service_memory.keys() | sort == quadlet_service_containers | sort
+    that:
+      - quadlet_service_memory.keys() | sort == quadlet_service_containers | sort
+      - quadlet_service_cpu.keys() | difference(quadlet_service_containers) | length == 0
     fail_msg: >-
       The memory ceilings name {{ quadlet_service_memory.keys() | sort | join(', ') }},
+      the CPU quotas name {{ quadlet_service_cpu.keys() | sort | join(', ') }},
       the containers are {{ quadlet_service_containers | sort | join(', ') }}.
     quiet: true
   vars:
@@ -25,8 +27,6 @@
          | select('match', '^' ~ service_name ~ '-[^/]+[.]container([.]j2)?$')
          | map('regex_replace', '^' ~ service_name ~ '-', '') | map('regex_replace', '[.]container([.]j2)?$', '') | list }}
 
-# An empty value is an optional secret that is not set. A container reads a
-# secret when it starts, so a new value restarts the pod.
 - name: Store the secrets as Podman secrets
   become: true
   become_user: "{{ service_name }}"
@@ -39,8 +39,6 @@
   register: quadlet_service_secret_replaced
   no_log: true
 
-# One archive per service instead of one SSH round trip per file.
-# README.md, "Design decisions".
 - name: Stage the Quadlets on the controller
   ansible.builtin.tempfile:
     state: directory
@@ -60,7 +58,6 @@
       ansible.builtin.shell:
         cmd: |
           set -eu
-          # cp takes the modes from the umask; the host needs 0644 and 0755.
           umask 022
           stage={{ quadlet_service_stage.path | quote }}
           cp -r {{ (role_path ~ '/files/container.d') | quote }} "$stage/"
@@ -70,6 +67,9 @@
           {% for name, size in quadlet_service_memory.items() %}
           mkdir -p "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d') | quote }}
           printf '[Container]\nMemory=%s\n' {{ size | quote }} > "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d/memory.conf') | quote }}
+          {% endfor %}
+          {% for name, quota in quadlet_service_cpu.items() %}
+          printf '[Service]\nCPUQuota=%s\n' {{ quota | quote }} > "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d/cpu.conf') | quote }}
           {% endfor %}
           {% for f in quadlet_service_extra_files %}
           mkdir -p "$(dirname "$stage"/{{ f.dest | quote }})"
@@ -105,10 +105,8 @@
       become: false
       changed_when: false
 
-    # Fixed mtimes and top-level entries only, so an unchanged tree packs to
-    # the same bytes and the same checksum.
     - name: Pack the stage
-      ansible.builtin.shell:  # noqa: command-instead-of-module  (no module creates an archive with fixed mtimes)
+      ansible.builtin.shell:  # noqa: command-instead-of-module
         cmd: >-
           set -o pipefail &&
           umask 077 &&
@@ -131,16 +129,11 @@
       become: true
       become_user: "{{ service_name }}"
 
-    # The directory holds exactly the archive, so a file that left the repo
-    # leaves the host. The service user owns the home, so it does the work: a
-    # symlink it put there reaches only what it may write anyway.
     - name: Replace the Quadlet directory when the archive changed
       when: quadlet_service_files_changed
       become: true
       become_user: "{{ service_name }}"
       block:
-        # A run that fails from here on leaves no record, so the next deploy
-        # replaces the directory again.
         - name: Forget the archive last unpacked
           ansible.builtin.file:
             path: "{{ quadlet_service_dir }}.tgz"
@@ -157,7 +150,6 @@
             state: directory
             mode: "0755"
 
-        # As a user, tar applies the umask; the modes of the stage stay.
         - name: Unpack the Quadlets, drop-ins and configs
           ansible.builtin.unarchive:
             src: "{{ quadlet_service_stage.path }}.tgz"

@@ -1,8 +1,6 @@
-# ct state new leaves the replies of the published ports alone.
 table inet service_egress
 delete table inet service_egress
 table inet service_egress {
-	# Each user with its subuid range, which a container on the host network uses.
 	set users {
 		type uid
 		flags interval

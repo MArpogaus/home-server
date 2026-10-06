@@ -34,13 +34,9 @@ storage:
       mode: 0644
       contents:
         inline: |
-          # Keys only: sshd never accepts core's password; only the console
-          # and polkit ask for it.
           PasswordAuthentication no
           KbdInteractiveAuthentication no
           PermitRootLogin no
-    # run0 for core without a password while root-gate keeps the gate open;
-    # else polkit asks for core's password.
     - path: /etc/polkit-1/rules.d/60-root-gate.rules
       mode: 0644
       contents:

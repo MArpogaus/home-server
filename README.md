@@ -38,8 +38,8 @@ git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
   (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
   at `/var/backup/<name>`. "Backup and restore" has the whole flow.
 - **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
-  rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots
-  after the last backup, or at 03:00.
+  rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots.
+  "Nightly schedule" has the times.
 - **Monitoring.** A snapshot or backup that succeeds writes
   `/var/lib/node-textfile/*.prom`. `monitoring/` holds this repository's
   rules, which `home-server-monitoring` collects.
@@ -123,7 +123,9 @@ the agent and asks `mkpasswd` for core's password, which the console and
 `root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
 host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
--lf -` before the key goes into `known_hosts`.
+-lf -` before the key goes into `known_hosts`. In the `build.sh` line,
+`<target disk>` is a disk of the host that boots the ISO, not of the
+controller.
 
 ```bash
 cd ignition
@@ -170,6 +172,7 @@ out its full setup; two deployments may repeat the same value.
 | `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
+| `base_setup_zram_size` | no | Size of the compressed swap in RAM, in zram-generator syntax; `min(ram / 2, 4096)` (MB). A change applies at the next boot |
 | `host_tasks_pre` | no | A task file that runs before `base_setup`. On SecureBlue, `platform/secureblue.yml` or a file that includes it |
 
 The functional test also reads `monitoring_service_alert_webhook_token`, part
@@ -182,6 +185,20 @@ Machine secrets are 48 alphanumerics, so no file format needs quotes:
 arguments to `ansible`, such as `-e ansible_host=<address>`.
 `BACKUP_TARGET=<name>` also runs a real backup to that target.
 
+## Nightly schedule
+
+| Variable | Default | Job |
+|---|---|---|
+| `base_setup_snapshot_time` | `00:00` | Snapshot of each service, then the send to each backup target |
+| `base_setup_restic_time` | `01:00` | restic copies the newest snapshots |
+| `base_setup_update_time` | `02:00` | `podman auto-update` per service user, up to 15 min later; a missed run waits for the next night |
+| `base_setup_reboot_time` | `03:00` | Reboot into a staged deployment, up to 30 min later; a finished send reboots earlier |
+| `base_setup_scrub_time` | `monthly` | Btrfs scrub of the host and of each backup target, up to 6 h later |
+
+The values are systemd calendar times in quotes, such as `"04:30"`: YAML
+reads an unquoted `4:30` as a number. Keep the updates after the snapshots,
+so a snapshot from before an update can restore a broken service.
+
 ## Backup and restore
 
 Each night `btrfs-snapshot@<service>.timer` takes a read-only snapshot. The
@@ -192,7 +209,8 @@ Nextcloud snapshot holds a database dump from just before it.
   delete it.
 - With `base_setup_restic_repository` set, `restic-backup.timer` copies the
   newest snapshot of every service to a restic repository. restic encrypts,
-  deduplicates and sends only the changes.
+  deduplicates and sends only the changes. The first run sends everything and
+  can take days.
 
 A new target needs `base_setup_luks_passphrase` and a deploy first, so the key
 file exists. A LUN also needs `base_setup_iscsi_portal` and
@@ -211,8 +229,8 @@ Add the `uuid` and a `name` to `base_setup_backup_targets` and deploy again.
 Read a file back from `/var/backup/<name>/<service>/<date>` after the first
 backup, before you trust the target.
 
-Once a month `btrfs-scrub@<path>.timer` scrubs the host (through `/var`, as
-`/sysroot` is read-only) and each target. A scrub reads every block and
+At `base_setup_scrub_time`, `btrfs-scrub@<path>.timer` scrubs the host
+(through `/var`, as `/sysroot` is read-only) and each target. A scrub reads every block and
 checks it against its checksum. An error it cannot repair fails the unit, and
 `ScheduledJobFailed` fires.
 
@@ -322,8 +340,8 @@ The ports in use:
   host down. Lower a ceiling before you add a service.
 - **Container output goes through `passthrough` where it can.** conmon's
   journald driver files every stderr line as `err`. With
-  `LogDriver=passthrough` the unit's priority applies. Each service sets it in
-  its own `container.d/`. Bunker keeps journald:
+  `LogDriver=passthrough` the unit's priority applies. `quadlet_service` sets
+  it for every container. Bunker replaces it with journald:
   `home-server-bunker/README.md`, "Specifics".
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The restic image is the

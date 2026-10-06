@@ -1,17 +1,5 @@
 #!/bin/bash
-# Renders the Ignition config for the real hardware and writes it into an
-# installer ISO. It needs podman, which runs butane and the installer.
-#
-#   ./build.sh [--platform <file.bu>] ign                      only render config.ign
-#   ./build.sh [--platform <file.bu>] iso <live.iso> /dev/sdX  write an installer ISO
-#
-# <live.iso> is the stock Fedora CoreOS live image. /dev/sdX is the disk of the
-# machine that will boot the ISO, not a disk of this one.
-#
-# --platform names a Butane fragment that the deployment provides, such as a
-# rebase to a derivative image. It is merged into the config.
 set -euo pipefail
-# config.bu and config.ign carry the console password hash.
 umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,7 +41,6 @@ if [ -z "${SSH_PUBLIC_KEY}" ]; then
 fi
 echo "Authorising: ${SSH_PUBLIC_KEY%% *} ...${SSH_PUBLIC_KEY##* }"
 
-# core's password: the console and root-gate ask for it.
 if [ -z "${PASSWORD_HASH:-}" ]; then
 	command -v mkpasswd >/dev/null || { echo "ERROR: mkpasswd not found; set PASSWORD_HASH"; exit 1; }
 	echo "Password for the 'core' user (console and root-gate):"
@@ -61,7 +48,7 @@ if [ -z "${PASSWORD_HASH:-}" ]; then
 fi
 
 config="$(<"${TEMPLATE}")"
-# shellcheck disable=SC2016  # the patterns are the literal placeholders
+# shellcheck disable=SC2016
 {
 	config="${config//'${SSH_PUBLIC_KEY}'/"${SSH_PUBLIC_KEY}"}"
 	config="${config//'${PASSWORD_HASH}'/"${PASSWORD_HASH}"}"
@@ -77,7 +64,6 @@ echo "Wrote ${IGNITION}"
 case "${MODE}" in
 iso)
 	SRC_DIR="$(cd "$(dirname "${SRC_ISO}")" && pwd)"
-	# coreos-installer refuses to replace an existing output file.
 	rm -f "${SCRIPT_DIR}/install.iso"
 	podman run --rm --security-opt label=disable \
 		-v "${SCRIPT_DIR}":/data -v "${SRC_DIR}":/iso -w /data \

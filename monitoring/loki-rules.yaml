@@ -49,8 +49,6 @@ groups:
         annotations:
           summary: "SSH login: {{ $labels.user }} from {{ $labels.ip }}"
 
-      # sshd logs a wrong key for an existing user as "Connection closed by
-      # authenticating user" at the default LogLevel.
       - alert: SshLoginFailed
         expr: |
           sum(count_over_time({job="systemd-journal", emitter_uid="0", unit="sshd.service"}
