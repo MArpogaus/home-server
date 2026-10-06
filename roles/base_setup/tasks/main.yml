@@ -1,6 +1,4 @@
 ---
-# Two services on one uid share a subuid range, two on one port cannot start.
-# A name is a user name and the <name>_service_ variable prefix.
 - name: Assert every service has its own name, uid and port
   ansible.builtin.assert:
     that:
@@ -72,8 +70,6 @@
     src: /usr/etc/containers/policy.json
   register: base_setup_policy_default
 
-# The service roles run after this one, so their defaults are read from the
-# controller's checkout.
 - name: Collect the image repositories every service role declares
   ansible.builtin.set_fact:
     base_setup_image_repos: >-
@@ -99,8 +95,6 @@
       {{ base_setup_image_repos + [base_setup_restic_image | regex_replace('@[^@]*$', '') | regex_replace(':[^:/]+$', '')] }}
   when: base_setup_restic_repository | length > 0
 
-# A policy scope matches by prefix, so a registry or namespace alone would
-# accept every image below it.
 - name: Refuse an image reference that is not a repository
   ansible.builtin.assert:
     that: base_setup_bad_scopes | length == 0
@@ -126,7 +120,6 @@
       {{ base_setup_image_repos | default([])
          | reject('search', '^' ~ (base_setup_signed_registry | regex_escape) ~ '(/|$)')
          | unique | sort | list }}
-    # Combined last, so no declared image can replace sigstoreSigned.
     base_setup_policy_extra: >-
       {{ dict(base_setup_unsigned_images
               | zip_longest([], fillvalue=[{'type': 'insecureAcceptAnything'}]))
@@ -162,7 +155,6 @@
 - name: Load the new units
   ansible.builtin.meta: flush_handlers
 
-# Readable by rootless containers without a relabel.
 - name: Label the textfile metrics directory for containers
   community.general.sefcontext:
     target: "{{ base_setup_textfile_dir }}(/.*)?"
@@ -176,8 +168,6 @@
     mode: "0755"
     setype: container_ro_file_t
 
-# The deploy time stands in for the first success, so a job that never
-# succeeds alerts 30 h after the deploy.
 - name: Seed the snapshot metrics
   ansible.builtin.copy:
     dest: "{{ base_setup_textfile_dir }}/snapshot-{{ item.name }}.prom"
@@ -197,8 +187,6 @@
     state: started
   loop: "{{ base_setup_services }}"
 
-# A scrub covers the whole filesystem and needs it writable: /sysroot is
-# read-only, /var is the same filesystem.
 - name: Name a scrub timer after each path, the host and each backup target
   ansible.builtin.command:
     argv: >-
@@ -220,7 +208,6 @@
     creates: "/var/lib/systemd/linger/{{ item.name }}"
   loop: "{{ base_setup_services }}"
 
-# enable-linger starts the manager only on the run that creates the linger file.
 - name: Start the systemd user managers
   ansible.builtin.systemd_service:
     name: user@{{ item.uid }}.service
@@ -234,10 +221,6 @@
     enabled: true
     state: started
 
-# The stock timer fires at midnight, with the nightly snapshots; an update
-# that breaks a service must come after the snapshot that can restore it. A
-# missed update waits for the next night, so a boot never runs it beside a
-# missed snapshot.
 - name: Create the drop-in directory of the update timer
   ansible.builtin.file:
     path: /etc/systemd/user/podman-auto-update.timer.d
@@ -320,7 +303,6 @@
       a copy off this machine: without it the backup cannot be read.
   when: base_setup_backup_targets | length > 0 or base_setup_iscsi_portal | length > 0
 
-# On the passphrase alone too: a target is formatted by hand before it is listed.
 - name: Install the LUKS key file
   when: base_setup_luks_passphrase | length > 0
   block:
@@ -347,7 +329,6 @@
   ansible.builtin.include_tasks: restic.yml
   when: base_setup_restic_repository | length > 0
 
-# node-exporter needs search here to stat each mounted target.
 - name: Ensure the backup root exists
   ansible.builtin.file:
     path: "{{ base_setup_backup_root }}"

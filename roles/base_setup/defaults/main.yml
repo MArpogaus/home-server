@@ -1,6 +1,4 @@
 ---
-# Set by the deployment. Keys: name, uid, optional port and groups. README.md,
-# "Adding a service".
 base_setup_services: []
 
 base_setup_btrfs_snapshot_retention_days: 30
@@ -10,8 +8,6 @@ base_setup_restic_time: "01:00"
 base_setup_update_time: "02:00"
 base_setup_reboot_time: "03:00"
 
-# uuid (of the LUKS container) and name. Empty: no backup target. README.md,
-# "Backup and restore".
 base_setup_backup_targets: []
 base_setup_backup_retention_days: 90
 
@@ -20,11 +16,7 @@ base_setup_iscsi_target: ""
 base_setup_iscsi_initiator: "iqn.2026-01.local.homeserver:{{ inventory_hostname }}"
 base_setup_luks_passphrase: ""
 
-# A restic repository for the newest snapshots. Empty: none.
-# README.md, "Backup and restore".
 base_setup_restic_repository: ""
 base_setup_restic_password: ""
-# Backend settings, such as RESTIC_REST_USERNAME and RESTIC_REST_PASSWORD.
 base_setup_restic_env: {}
-# By digest: it runs as root and reads every service's files.
 base_setup_restic_image: "docker.io/restic/restic:0.19.1@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510"
