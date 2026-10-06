@@ -37,9 +37,10 @@ git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
   `btrfs-backup@<target>.service`. A target is a LUKS2 container with Btrfs
   (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
   at `/var/backup/<name>`. "Backup and restore" has the whole flow.
-- **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
-  rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots
-  after the last backup, or at 03:00.
+- **Updates and auto-reboot.** `podman-auto-update.timer` runs per user
+  between 02:00 and 02:15, after the nightly snapshots. When rpm-ostree has
+  staged a deployment, `auto-reboot-staged.service` reboots after the last
+  backup, or at 03:00.
 - **Monitoring.** A snapshot or backup that succeeds writes
   `/var/lib/node-textfile/*.prom`. `monitoring/` holds this repository's
   rules, which `home-server-monitoring` collects.

@@ -234,12 +234,35 @@
     enabled: true
     state: started
 
+# The stock timer fires at midnight, with the nightly snapshots; an update
+# that breaks a service must come after the snapshot that can restore it. A
+# missed update waits for the next night, so a boot never runs it beside a
+# missed snapshot.
+- name: Create the drop-in directory of the update timer
+  ansible.builtin.file:
+    path: /etc/systemd/user/podman-auto-update.timer.d
+    state: directory
+    owner: root
+    mode: "0755"
+
+- name: Run the container updates after the nightly snapshots
+  ansible.builtin.copy:
+    dest: /etc/systemd/user/podman-auto-update.timer.d/after-snapshots.conf
+    content: |
+      [Timer]
+      OnCalendar=
+      OnCalendar=*-*-* 02:00
+      Persistent=false
+    owner: root
+    mode: "0644"
+
 - name: Enable podman auto-update timer for service users
   ansible.builtin.systemd_service:
     name: podman-auto-update.timer
     scope: user
     enabled: true
     state: started
+    daemon_reload: true
   become: true
   become_user: "{{ item.name }}"
   loop: "{{ base_setup_services }}"
