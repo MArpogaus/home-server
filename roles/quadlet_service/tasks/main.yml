@@ -12,11 +12,14 @@
   loop_control:
     label: "{{ item.key }}"
 
-- name: Assert every container has a memory ceiling
+- name: Assert every container has a memory ceiling and every CPU quota a container
   ansible.builtin.assert:
-    that: quadlet_service_memory.keys() | sort == quadlet_service_containers | sort
+    that:
+      - quadlet_service_memory.keys() | sort == quadlet_service_containers | sort
+      - quadlet_service_cpu.keys() | difference(quadlet_service_containers) | length == 0
     fail_msg: >-
       The memory ceilings name {{ quadlet_service_memory.keys() | sort | join(', ') }},
+      the CPU quotas name {{ quadlet_service_cpu.keys() | sort | join(', ') }},
       the containers are {{ quadlet_service_containers | sort | join(', ') }}.
     quiet: true
   vars:
@@ -70,6 +73,9 @@
           {% for name, size in quadlet_service_memory.items() %}
           mkdir -p "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d') | quote }}
           printf '[Container]\nMemory=%s\n' {{ size | quote }} > "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d/memory.conf') | quote }}
+          {% endfor %}
+          {% for name, quota in quadlet_service_cpu.items() %}
+          printf '[Service]\nCPUQuota=%s\n' {{ quota | quote }} > "$stage"/{{ (service_name ~ '-' ~ name ~ '.container.d/cpu.conf') | quote }}
           {% endfor %}
           {% for f in quadlet_service_extra_files %}
           mkdir -p "$(dirname "$stage"/{{ f.dest | quote }})"
