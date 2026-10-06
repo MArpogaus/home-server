@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+umask 077
+
+DUMP_DIR="${HOME}/data/db_dumps"
+TIMESTAMP="$(date +%F-%H%M%S)"
+DUMP_FILE="${DUMP_DIR}/dump-${TIMESTAMP}.sql"
+
+mkdir -p "$DUMP_DIR"
+rm -f "$DUMP_DIR"/*.tmp
+
+for _ in $(seq 1 60); do
+	podman exec -u postgres {{ quadlet_service_db_dump.container }} pg_isready -q -U {{ quadlet_service_db_dump.user }} && break
+	sleep 5
+done
+
+podman exec -e PGOPTIONS='-c lock_timeout=900000' -u postgres {{ quadlet_service_db_dump.container }} \
+	pg_dumpall -U {{ quadlet_service_db_dump.user }} > "${DUMP_FILE}.tmp"
+mv "${DUMP_FILE}.tmp" "$DUMP_FILE"
+
+echo "Dump saved: ${DUMP_FILE} ($(wc -c < "$DUMP_FILE") bytes)"
+
+find "$DUMP_DIR" -name 'dump-*.sql' -mtime +{{ quadlet_service_db_dump.retention_days }} -delete

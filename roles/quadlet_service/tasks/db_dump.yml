@@ -1,0 +1,52 @@
+---
+- name: Deploy the pre-snapshot database dump script
+  become: true
+  become_user: "{{ service_name }}"
+  block:
+    - name: Create the script directory
+      ansible.builtin.file:
+        path: "{{ service_home }}/bin"
+        state: directory
+        mode: "0755"
+
+    - name: Deploy the dump script
+      ansible.builtin.template:
+        src: pre-snapshot-pg-dump.sh.j2
+        dest: "{{ service_home }}/bin/pre-snapshot-pg-dump.sh"
+        mode: "0755"
+
+- name: Make room for the snapshot drop-in
+  ansible.builtin.file:
+    path: /etc/systemd/system/btrfs-snapshot@{{ service_name }}.service.d
+    state: directory
+    owner: root
+    mode: "0755"
+
+- name: Snapshot the data only after the dump
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/btrfs-snapshot@{{ service_name }}.service.d/after-dump.conf
+    content: |
+      [Unit]
+      Wants={{ service_name }}-pg-dumpall.service
+      After={{ service_name }}-pg-dumpall.service
+    owner: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Template the dump service
+  ansible.builtin.template:
+    src: pg-dumpall.service.j2
+    dest: /etc/systemd/system/{{ service_name }}-pg-dumpall.service
+    owner: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Seed the dump freshness metric
+  ansible.builtin.copy:
+    dest: "{{ base_setup_textfile_dir }}/dump-{{ service_name }}.prom"
+    content: |
+      dump_last_success_timestamp_seconds{service="{{ service_name }}"} {{ ansible_facts.date_time.epoch }}
+    owner: root
+    mode: "0644"
+    setype: container_ro_file_t
+    force: false

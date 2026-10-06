@@ -5,4 +5,5 @@ quadlet_service_required: {}
 quadlet_service_secrets: {}
 quadlet_service_memory: {}
 quadlet_service_cpu: {}
+quadlet_service_db_dump: {}
 quadlet_service_dir: "{{ service_home }}/.config/containers/systemd"

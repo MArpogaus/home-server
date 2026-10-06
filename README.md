@@ -202,7 +202,8 @@ so a snapshot from before an update can restore a broken service.
 ## Backup and restore
 
 Each night `btrfs-snapshot@<service>.timer` takes a read-only snapshot. The
-Nextcloud snapshot holds a database dump from just before it.
+snapshot of a service with a Postgres database (Nextcloud, Dawarich) holds a
+dump of it from just before.
 
 - Each target in `base_setup_backup_targets` receives the snapshots with an
   incremental `btrfs send`. A target is fast to restore from, but the host can
