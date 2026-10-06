@@ -1,6 +1,4 @@
 #!/bin/sh
-# While /run/polkit/root-gate exists, the polkit rule lets core run run0
-# without a password. README.md, "Deploy", has the usage.
 set -eu
 gate=/run/polkit/root-gate
 
@@ -20,7 +18,6 @@ case "${1:-} ${2:-}" in
 esac
 
 [ -z "${timer}" ] || systemd-analyze timespan "${timer}" >/dev/null
-# Only this first run0 asks for the password; the gate is open after it.
 run0 touch "${gate}"
 run0 systemctl stop root-gate-close.timer 2>/dev/null || true
 [ -z "${timer}" ] || run0 systemd-run --quiet --collect --unit=root-gate-close --on-active="${timer}" rm -f "${gate}" ||

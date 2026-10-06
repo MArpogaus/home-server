@@ -5,8 +5,6 @@ After=network-online.target {{ base_setup_services | map(attribute='name') | map
 
 [Service]
 Type=oneshot
-# The first run uploads everything and can take days. A stuck run shows as
-# JobStale, and its inhibitor as AutoRebootBlocked.
 TimeoutStartSec=infinity
 Environment=BTRFS_SNAPSHOT_DIR={{ base_setup_btrfs_snapshot_dir }}
 Environment=NODE_TEXTFILE_DIR={{ base_setup_textfile_dir }}

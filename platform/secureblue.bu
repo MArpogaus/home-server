@@ -10,7 +10,6 @@ storage:
           MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdruKsOhUkgdd0lNDHNBymE2Wyb/p
           GVnx59QbNoGFbImqZLRVt6uQnO9MfiHU9IZiJl9aNetfAqDsgsltAUQnXQ==
           -----END PUBLIC KEY-----
-    # Gates the signed rebase. base_setup rewrites the file on the first deploy.
     - path: /etc/containers/policy.json
       mode: 0644
       overwrite: true
@@ -37,7 +36,6 @@ storage:
           #!/usr/bin/env bash
           set -e
 
-          # /opt survives the rebase, so the script removes itself.
           systemctl disable --now zincati.service 2>/dev/null || true
           systemctl stop rpm-ostreed-automatic.timer rpm-ostreed-automatic.service 2>/dev/null || true
 
@@ -51,8 +49,6 @@ storage:
           systemctl reboot
 systemd:
   units:
-    # securecore ships python3, and a second rpm-ostree transaction would
-    # collide with the rebase.
     - name: install-python.service
       enabled: false
     - name: install-secureblue.service
@@ -67,7 +63,6 @@ systemd:
         [Service]
         Type=oneshot
         TimeoutStartSec=1h
-        # The transaction runs in rpm-ostreed and outlives a killed client.
         ExecStopPost=-/usr/bin/rpm-ostree cancel
         WorkingDirectory=/var/tmp
         ExecStart=/opt/install_secureblue.sh

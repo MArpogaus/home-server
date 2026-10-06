@@ -1,11 +1,8 @@
 #!/bin/bash
-# Self-check for roles/base_setup/files/btrfs-backup.sh. `btrfs` is a stub on
-# PATH and the "subvolumes" are directories, so it needs no Btrfs and no root.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="${SCRIPT_DIR}/../roles/base_setup/files/btrfs-backup.sh"
-# Inside the 90-day retention window the cases configure; DOLD is outside it.
 D1="$(date -d '-3 days' +%F)"
 D2="$(date -d '-2 days' +%F)"
 D3="$(date -d '-1 day' +%F)"
@@ -13,8 +10,6 @@ DOLD="$(date -d '-100 days' +%F)"
 PASS=0
 FAIL=0
 
-# `subvolume show` answers from marker files. A `.fail` file in the receive
-# directory makes the receive stop short of finishing.
 make_stub() {
 	cat >"$1/btrfs" <<'STUB'
 #!/bin/bash
@@ -23,7 +18,7 @@ case "$1 $2" in
 	d="$3"
 	[ -d "${d}" ] || { echo "ERROR: not a subvolume" >&2; exit 1; }
 	echo "Name: $(basename "${d}")"
-	if [ -e "${d}/.no-field" ]; then :                      # btrfs-progs changed
+	if [ -e "${d}/.no-field" ]; then :
 	elif [ -e "${d}/.received" ]; then
 		echo "	Received UUID: 		f4d2b1a0-1111-2222-3333-444455556666"
 	else
@@ -56,8 +51,6 @@ STUB
 	chmod +x "$1/chcon"
 }
 
-# A dated copy on the target. Only a received copy is a real subvolume, so
-# `subvolume delete` refuses the others.
 place() {
 	mkdir -p "$1"
 	case "${2}" in
@@ -75,15 +68,13 @@ place() {
 	esac
 }
 
-# want_name: a copy that must exist afterwards. want_err: text the output must
-# hold. A run that succeeds writes the metric, and a failed one does not.
 run_case() {
 	local desc="$1" want_rc="$2" want_left="$3" want_name="${5-}" want_err="${6-}"
 	local root out rc=0 left named=ok
 	root="$(mktemp -d)"
 	mkdir -p "${root}/bin" "${root}/snap" "${root}/backup"
 	make_stub "${root}/bin"
-	"${4}" "${root}"   # the case's own setup
+	"${4}" "${root}"
 	out="$(PATH="${root}/bin:${PATH}" bash -c \
 		"cd ${root} && BTRFS_SNAPSHOT_DIR=${root}/snap BACKUP_ROOT=${root}/backup RETENTION_DAYS=90 NODE_TEXTFILE_DIR=${root} bash ${SCRIPT} t" 2>&1)" || rc=$?
 	left="$(find "${root}/backup" -mindepth 3 -maxdepth 3 -type d | wc -l)"

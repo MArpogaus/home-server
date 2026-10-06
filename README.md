@@ -123,7 +123,9 @@ the agent and asks `mkpasswd` for core's password, which the console and
 `root-gate` use.
 `SSH_PUBLIC_KEY` and `PASSWORD_HASH` set them instead. The console shows the
 host key fingerprints; compare them with `ssh-keyscan <address> | ssh-keygen
--lf -` before the key goes into `known_hosts`.
+-lf -` before the key goes into `known_hosts`. In the `build.sh` line,
+`<target disk>` is a disk of the host that boots the ISO, not of the
+controller.
 
 ```bash
 cd ignition
@@ -207,7 +209,8 @@ Nextcloud snapshot holds a database dump from just before it.
   delete it.
 - With `base_setup_restic_repository` set, `restic-backup.timer` copies the
   newest snapshot of every service to a restic repository. restic encrypts,
-  deduplicates and sends only the changes.
+  deduplicates and sends only the changes. The first run sends everything and
+  can take days.
 
 A new target needs `base_setup_luks_passphrase` and a deploy first, so the key
 file exists. A LUN also needs `base_setup_iscsi_portal` and

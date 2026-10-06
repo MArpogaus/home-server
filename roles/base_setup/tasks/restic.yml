@@ -39,7 +39,6 @@
 - name: Load the restic backup units
   ansible.builtin.meta: flush_handlers
 
-# restic exits with 10 when the repository does not exist yet.
 - name: Read whether the restic repository exists
   ansible.builtin.command: /usr/local/bin/restic cat config
   register: base_setup_restic_config
@@ -51,8 +50,6 @@
   when: base_setup_restic_config.rc == 10
   changed_when: true
 
-# The deploy time stands in for the first success, so a job that never
-# succeeds alerts 30 h after the deploy.
 - name: Seed the restic backup metric
   ansible.builtin.copy:
     dest: "{{ base_setup_textfile_dir }}/backup-restic.prom"

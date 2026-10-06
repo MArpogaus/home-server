@@ -15,7 +15,6 @@ import urllib.request
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FCOS_VERSION = "44.20260510.3.1"
-# images.qemu.sha256 of the build's meta.json; it moves with FCOS_VERSION.
 FCOS_SHA256 = "b8f0ae906a1ff357b9f5e62eb7f64ee19a42d01a16d9ac4d2132380601aa84da"
 DISK = os.path.join(TEST_DIR, "fcos.qcow2")
 DISK_XZ = DISK + ".xz"
@@ -26,7 +25,6 @@ URL = (f"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/"
        f"{FCOS_VERSION}/x86_64/fedora-coreos-{FCOS_VERSION}-qemu.x86_64.qcow2.xz")
 
 BASE_SNAPSHOT = "base"
-# 8 GB, as on a small host, so a cold start is not tested under false pressure.
 MEMORY_MB = "8192"
 CPUS = "2"
 DISK_SIZE = "40G"
@@ -58,7 +56,6 @@ def save_base_snapshot():
     """Tag the current disk state so a reset is a rollback, not a rebuild."""
     if not os.path.exists(DISK):
         fail(f"No disk at {DISK}")
-    # Before the delete below, so a locked disk keeps its old snapshot.
     busy = subprocess.run(["qemu-img", "snapshot", "-l", DISK],
                           capture_output=True, text=True)
     if busy.returncode != 0:
@@ -109,7 +106,6 @@ def ensure_disk(fresh):
             fail(f"{DISK_XZ} does not match FCOS_SHA256; deleted it")
         print("Extracting disk image")
         subprocess.run(["unxz", "-k", DISK_XZ], check=True)
-        # A disk left at its download size fills up on the first deploy.
         try:
             subprocess.run(["qemu-img", "resize", DISK, DISK_SIZE], check=True)
         except (OSError, subprocess.CalledProcessError):
@@ -136,7 +132,7 @@ def build_ignition(platform):
     if result.returncode != 0:
         fail(f"build.sh failed:\n{result.stdout}{result.stderr}")
     with open(IGNITION) as handle:
-        json.load(handle)  # refuse to boot a truncated config
+        json.load(handle)
     print("Generated config.ign")
 
 
@@ -173,7 +169,6 @@ def main(argv=None):
     ensure_disk(args.fresh)
 
     if args.restore:
-        # Ignition runs on first boot only, so it would ignore the config.
         ignition_args = []
     else:
         build_ignition(args.platform)

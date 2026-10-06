@@ -1,4 +1,3 @@
 ---
-# Each service repository lints itself.
 exclude_paths:
   - services/

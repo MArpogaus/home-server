@@ -1,6 +1,4 @@
 #!/bin/bash
-# Read-only Btrfs snapshot of one service subvolume, plus retention by the date
-# in the snapshot name.
 set -euo pipefail
 
 VOLUME_NAME="$1"

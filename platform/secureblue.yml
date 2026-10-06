@@ -1,8 +1,4 @@
 ---
-# Every host of this project runs SecureBlue. The playbook targets plain
-# Fedora CoreOS, so these steps live here.
-# harden_container_userns stops rootless Podman with "cannot clone", and ujust
-# owns that module. Rootless Podman is the whole architecture.
 - name: Read whether container domains may create user namespaces
   ansible.builtin.command: ujust set-container-userns status
   register: secureblue_container_userns
@@ -13,16 +9,12 @@
   when: "'disabled' in secureblue_container_userns.stdout"
   changed_when: true
 
-# SecureBlue denies iscsid its netlink socket with a CIL deny, which no allow
-# rule overrides (secureblue_deny_obscure_sockets.cil). Drop this when that
-# deny exempts iscsid_t.
 - name: Make iscsid a permissive SELinux domain
   community.general.selinux_permissive:
     name: iscsid_t
     permissive: true
   when: base_setup_iscsi_portal | default('') | length > 0
 
-# SecureBlue runs firewalld; stock Fedora CoreOS has none.
 - name: Ensure firewalld is running
   ansible.builtin.systemd_service:
     name: firewalld
@@ -37,24 +29,18 @@
     immediate: true
   loop: [ssh, http, https]
 
-# securecore sets AllowTcpForwarding no. Grafana is reachable through a tunnel
-# alone, so the admin user gets `local` back and nothing else.
 - name: Allow local port forwarding for the admin user
   ansible.builtin.copy:
     dest: /etc/ssh/sshd_config.d/90-core-forwarding.conf
     content: |
       Match User core
         AllowTcpForwarding local
-      # Ends the Match block, which otherwise scopes every later directive.
       Match all
     owner: root
     mode: "0600"
     validate: sshd -t -f %s
   register: secureblue_sshd_forwarding
 
-# securecore sets TCPKeepAlive no and leaves ClientAliveInterval at 0, so sshd
-# never drops a dead client, and its logind session blocks the staged reboot.
-# With securecore's ClientAliveCountMax 2, a dead client goes after 10-15 minutes.
 - name: Drop dead SSH clients
   ansible.builtin.copy:
     dest: /etc/ssh/sshd_config.d/90-client-alive.conf
@@ -71,8 +57,6 @@
     state: reloaded
   when: secureblue_sshd_forwarding is changed or secureblue_sshd_client_alive is changed
 
-# The secureblue MOTD runs in every shell sshd starts, including each Ansible
-# round trip. This file is its opt-out.
 - name: Silence the MOTD for the admin user's SSH sessions
   ansible.builtin.file:
     path: "~core/.config/{{ item.name }}"

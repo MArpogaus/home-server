@@ -1,14 +1,10 @@
 #!/bin/bash
-# restic backup of the newest snapshot of every service. Each one appears at
-# /data/<name>, so every run finds the previous one as its parent.
 set -euo pipefail
 shopt -s nullglob
 
 SNAP_DIR="${BTRFS_SNAPSHOT_DIR:?}"
 TEXTFILE_DIR="${NODE_TEXTFILE_DIR:?}"
 
-# Dated names up to today, oldest first. A hand-made or future-dated name
-# never becomes the latest.
 snapshots() {
 	local today
 	today="$(date +%Y-%m-%d)"
