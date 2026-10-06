@@ -340,8 +340,8 @@ The ports in use:
   host down. Lower a ceiling before you add a service.
 - **Container output goes through `passthrough` where it can.** conmon's
   journald driver files every stderr line as `err`. With
-  `LogDriver=passthrough` the unit's priority applies. Each service sets it in
-  its own `container.d/`. Bunker keeps journald:
+  `LogDriver=passthrough` the unit's priority applies. `quadlet_service` sets
+  it for every container. Bunker replaces it with journald:
   `home-server-bunker/README.md`, "Specifics".
 - **Updates are unattended.** Digest pinning and auto-update exclude each
   other, and this project chose auto-update. The restic image is the
