@@ -10,16 +10,16 @@ ansible_user: core
 # changes: README.md, "Adding a service".
 base_setup_services:
   - name: nextcloud
-    uid: 82
+    uid: 1002
     port: 8080
   - name: bunker
-    uid: 1001
+    uid: 1003
   - name: monitoring
-    uid: 1002
+    uid: 1004
     # Alloy reads the host journal.
     groups: [systemd-journal]
   - name: ntfy
-    uid: 1003
+    uid: 1005
     port: 8081
 
 # The hostnames of this deployment; no public DNS here.
