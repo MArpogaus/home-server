@@ -50,9 +50,9 @@ here, and then release this repository as in "Releases".
 
 ## House style
 
-Code carries no comments, except tool directives such as `shellcheck` or
-`noqa`. The README of the repository that owns the code holds what an operator
-needs. Write the prose in Simplified Technical English:
+Code carries no comments. Shebangs, tool directives such as `shellcheck` or
+`noqa`, and the example files that a user copies keep theirs. The README of the
+repository that owns the code holds what an operator needs. Write the prose in Simplified Technical English:
 short sentences, one meaning per word, and the condition before the command.
 
 ## Checks in this repository
