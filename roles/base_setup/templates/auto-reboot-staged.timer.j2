@@ -2,7 +2,7 @@
 Description=Daily check for staged rpm-ostree deployment
 
 [Timer]
-OnCalendar=03:00:00
+OnCalendar={{ base_setup_reboot_time }}
 Persistent=true
 RandomizedDelaySec=30m
 

@@ -37,10 +37,9 @@ git clone --recurse-submodules https://github.com/MArpogaus/home-server.git
   `btrfs-backup@<target>.service`. A target is a LUKS2 container with Btrfs
   (USB disk or iSCSI LUN), found by UUID, opened with `nofail` and automounted
   at `/var/backup/<name>`. "Backup and restore" has the whole flow.
-- **Updates and auto-reboot.** `podman-auto-update.timer` runs per user
-  between 02:00 and 02:15, after the nightly snapshots. When rpm-ostree has
-  staged a deployment, `auto-reboot-staged.service` reboots after the last
-  backup, or at 03:00.
+- **Updates and auto-reboot.** `podman-auto-update.timer` runs per user. When
+  rpm-ostree has staged a deployment, `auto-reboot-staged.service` reboots.
+  "Nightly schedule" has the times.
 - **Monitoring.** A snapshot or backup that succeeds writes
   `/var/lib/node-textfile/*.prom`. `monitoring/` holds this repository's
   rules, which `home-server-monitoring` collects.
@@ -182,6 +181,19 @@ Machine secrets are 48 alphanumerics, so no file format needs quotes:
 `functional_test.sh <host> -i <deployment dir>/inventory.yml` passes further
 arguments to `ansible`, such as `-e ansible_host=<address>`.
 `BACKUP_TARGET=<name>` also runs a real backup to that target.
+
+## Nightly schedule
+
+| Variable | Default | Job |
+|---|---|---|
+| `base_setup_snapshot_time` | `00:00` | Snapshot of each service, then the send to each backup target |
+| `base_setup_restic_time` | `01:00` | restic copies the newest snapshots |
+| `base_setup_update_time` | `02:00` | `podman auto-update` per service user, up to 15 min later; a missed run waits for the next night |
+| `base_setup_reboot_time` | `03:00` | Reboot into a staged deployment, up to 30 min later; a finished send reboots earlier |
+
+The values are systemd calendar times in quotes, such as `"04:30"`: YAML
+reads an unquoted `4:30` as a number. Keep the updates after the snapshots,
+so a snapshot from before an update can restore a broken service.
 
 ## Backup and restore
 

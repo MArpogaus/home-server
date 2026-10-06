@@ -5,6 +5,11 @@ base_setup_services: []
 
 base_setup_btrfs_snapshot_retention_days: 30
 
+base_setup_snapshot_time: "00:00"
+base_setup_restic_time: "01:00"
+base_setup_update_time: "02:00"
+base_setup_reboot_time: "03:00"
+
 # uuid (of the LUKS container) and name. Empty: no backup target. README.md,
 # "Backup and restore".
 base_setup_backup_targets: []

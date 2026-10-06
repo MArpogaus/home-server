@@ -251,7 +251,7 @@
     content: |
       [Timer]
       OnCalendar=
-      OnCalendar=*-*-* 02:00
+      OnCalendar={{ base_setup_update_time }}
       Persistent=false
     owner: root
     mode: "0644"
