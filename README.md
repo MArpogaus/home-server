@@ -65,6 +65,9 @@ host with `-l`:
 ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
 ```
 
+`-e '{"deploy_services": ["nextcloud"]}'` deploys the base setup and only the
+named services. Use it when only these services changed.
+
 Ansible loads `group_vars/` next to that file. A directory as `-i` would also
 read `ssh/` and `tasks/` as inventories. A deployment directory is one host's
 complete setup: `inventory.yml`, `group_vars/all/vars.yml` (plain),

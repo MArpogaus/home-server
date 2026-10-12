@@ -59,3 +59,4 @@
       loop: "{{ base_setup_services }}"
       loop_control:
         loop_var: svc
+      when: svc.name in deploy_services | default(base_setup_services | map(attribute='name'))
