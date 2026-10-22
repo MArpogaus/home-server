@@ -45,8 +45,10 @@
     - name: Run what this host needs before the base setup
       ansible.builtin.include_tasks: "{{ host_tasks_pre }}"
       when: "'host_tasks_pre' in hostvars[inventory_hostname]"
+      tags: base
   roles:
-    - base_setup
+    - role: base_setup
+      tags: base
   post_tasks:
     - name: Deploy each service role  # noqa: role-name[path]
       ansible.builtin.include_role:

@@ -66,7 +66,10 @@ ansible-playbook -i <deployment dir>/inventory.yml site.yml -l <host>
 ```
 
 `-e '{"deploy_services": ["nextcloud"]}'` deploys the base setup and only the
-named services. Use it when only these services changed.
+named services. Use it when only these services changed. `--skip-tags base`
+also skips the base setup and the host's `host_tasks_pre`; that is safe while
+no service image comes from a new registry, which the base setup must admit
+in the signature policy first.
 
 Ansible loads `group_vars/` next to that file. A directory as `-i` would also
 read `ssh/` and `tasks/` as inventories. A deployment directory is one host's
