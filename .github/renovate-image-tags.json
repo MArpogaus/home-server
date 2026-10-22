@@ -11,9 +11,6 @@
   "enabledManagers": [
     "custom.regex"
   ],
-  "schedule": [
-    "before 6am on monday"
-  ],
   "customManagers": [
     {
       "customType": "regex",
