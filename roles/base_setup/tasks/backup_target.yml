@@ -24,6 +24,18 @@
     login: true
     auto_node_startup: true
 
+- name: Read the target's session settings
+  ansible.builtin.command: iscsiadm -m node -T {{ base_setup_iscsi_target }} -p {{ base_setup_iscsi_portal }}
+  register: base_setup_iscsi_node
+  changed_when: false
+
+- name: Hold I/O while the target is gone instead of failing it
+  ansible.builtin.command: >-
+    iscsiadm -m node -T {{ base_setup_iscsi_target }} -p {{ base_setup_iscsi_portal }} -o update
+    -n node.session.timeo.replacement_timeout -v {{ base_setup_iscsi_replacement_timeout }}
+  when: ('node.session.timeo.replacement_timeout = ' ~ base_setup_iscsi_replacement_timeout) not in base_setup_iscsi_node.stdout_lines
+  changed_when: true
+
 - name: Wait for the LUN to appear
   ansible.builtin.wait_for:
     path: /dev/disk/by-path/ip-{{ base_setup_iscsi_portal }}:3260-iscsi-{{ base_setup_iscsi_target }}-lun-0

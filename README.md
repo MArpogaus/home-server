@@ -176,6 +176,7 @@ out its full setup; two deployments may repeat the same value.
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
 | `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
+| `base_setup_iscsi_replacement_timeout` | no | Seconds the host holds I/O while the target is gone before it fails it (600); applies from the next login |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `base_setup_zram_size` | no | Size of the compressed swap in RAM, in zram-generator syntax; `min(ram / 2, 4096)` (MB). A change applies at the next boot |
