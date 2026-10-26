@@ -58,6 +58,10 @@ mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
 ```
 
+The password file may also be an executable that prints the password, for
+example `gpg --batch -q -d ~/.config/home-server/vault-password.gpg` with the
+key on a smartcard; every run then needs the card.
+
 Every run names the `inventory.yml` of a deployment directory with `-i` and a
 host with `-l`:
 
