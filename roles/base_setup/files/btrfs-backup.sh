@@ -73,8 +73,8 @@ for src in "${SNAP_DIR}"/*/; do
 		refused=1
 		continue
 	fi
-	echo "${latest}" >"${src}.tmp.$$"
-	mv "${src}.tmp.$$" "${src}.backed-up-${TARGET}"
+	echo "${latest}" >"${src}.tmp-${TARGET}"
+	mv "${src}.tmp-${TARGET}" "${src}.backed-up-${TARGET}"
 	echo "${svc}/${latest} is on ${TARGET}."
 	copied=$((copied + 1))
 

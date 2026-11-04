@@ -163,14 +163,14 @@ setup_stale_source() {
 }
 
 run_marker_case() {
-	local desc="$1" setup="$2" want="$3" root got=absent
+	local desc="$1" setup="$2" want="$3" tgt="${4:-t}" root got=absent
 	root="$(mktemp -d)"
 	mkdir -p "${root}/bin" "${root}/snap" "${root}/backup"
 	make_stub "${root}/bin"
 	"${setup}" "${root}"
 	PATH="${root}/bin:${PATH}" BTRFS_SNAPSHOT_DIR="${root}/snap" BACKUP_ROOT="${root}/backup" \
-		RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" bash "${SCRIPT}" t >/dev/null 2>&1 || true
-	[[ -e "${root}/snap/svc/.backed-up-t" ]] && got="$(cat "${root}/snap/svc/.backed-up-t")"
+		RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" bash "${SCRIPT}" "${tgt}" >/dev/null 2>&1 || true
+	[[ -e "${root}/snap/svc/.backed-up-${tgt}" ]] && got="$(cat "${root}/snap/svc/.backed-up-${tgt}")"
 	if [[ "${got}" == "${want}" ]]; then
 		PASS=$((PASS + 1)); echo "  PASS: ${desc}"
 	else
@@ -205,6 +205,7 @@ run_prune_case() {
 
 setup_marker_sent() { mkdir -p "$1/snap/svc/${D3}"; }
 setup_marker_failed() { mkdir -p "$1/snap/svc/${D3}" "$1/backup/t/svc"; : >"$1/backup/t/svc/.error"; }
+setup_marker_failed_old() { setup_marker_failed "$1"; echo "${D1}" >"$1/snap/svc/.backed-up-t"; }
 setup_marker_already() { mkdir -p "$1/snap/svc/${D3}"; place "$1/backup/t/svc/${D3}" received; }
 
 echo "=== btrfs-backup.sh ==="
@@ -225,7 +226,32 @@ run_marker_case "a verified send writes the marker" setup_marker_sent "${D3}"
 run_marker_case "a failed receive writes no marker" setup_marker_failed absent
 run_marker_case "an already backed up snapshot writes the marker" setup_marker_already "${D3}"
 
+run_marker_case "a failed receive keeps the older marker" setup_marker_failed_old "${D1}"
+run_marker_case "the marker is named after the target" setup_marker_sent "${D3}" nas2
+
+run_unmarked_case() {
+	local desc="$1" mode="$2" root ok=ok
+	root="$(mktemp -d)"
+	mkdir -p "${root}/bin" "${root}/svc/svc" "${root}/snap/svc"
+	make_stub "${root}/bin"
+	place "${root}/snap/svc/${DOLD}" received
+	[[ "${mode}" == empty ]] && : >"${root}/snap/svc/.backed-up-t"
+	PATH="${root}/bin:${PATH}" BTRFS_SERVICES_DIR="${root}/svc" BTRFS_SNAPSHOT_DIR="${root}/snap" \
+		RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" bash "${SNAP_SCRIPT}" svc >/dev/null 2>&1 || true
+	[[ -d "${root}/snap/svc/${DOLD}" ]] && ok="old snapshot kept"
+	[[ -d "${root}/snap/svc/$(date +%F)" ]] || ok="today missing"
+	[[ -e "${root}/snapshot-svc.prom" ]] || ok="no metric"
+	if [[ "${ok}" == ok ]]; then
+		PASS=$((PASS + 1)); echo "  PASS: ${desc}"
+	else
+		FAIL=$((FAIL + 1)); echo "  FAIL: ${desc} (${ok})"
+	fi
+	rm -rf "${root}"
+}
+
 echo "=== btrfs-snapshot.sh ==="
+run_unmarked_case "pruning without a marker file deletes the old snapshot" none
+run_unmarked_case "pruning with an empty marker file deletes the old snapshot" empty
 run_prune_case "pruning keeps every marked snapshot and deletes other old ones" 3 ok
 
 echo "=== ${PASS} passed, ${FAIL} failed ==="
