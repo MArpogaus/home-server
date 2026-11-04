@@ -23,6 +23,8 @@
     discover: true
     login: true
     auto_node_startup: true
+    node_user: "{{ base_setup_iscsi_chap_user if base_setup_iscsi_chap_user | length > 0 else omit }}"
+    node_pass: "{{ base_setup_iscsi_chap_password if base_setup_iscsi_chap_user | length > 0 else omit }}"
 
 - name: Read the target's session settings
   ansible.builtin.command: iscsiadm -m node -T {{ base_setup_iscsi_target }} -p {{ base_setup_iscsi_portal }}
