@@ -39,6 +39,7 @@ case "$1 $2" in
 	;;
 "send -q")
 	for a in "$@"; do last="$a"; done
+	[ -z "${SEND_LOG:-}" ] || echo "$*" >>"${SEND_LOG}"
 	echo "SEND:${last}"
 	;;
 receive*)
@@ -248,6 +249,28 @@ run_unmarked_case() {
 	fi
 	rm -rf "${root}"
 }
+
+run_incremental_case() {
+	local root ok=ok
+	root="$(mktemp -d)"
+	mkdir -p "${root}/bin" "${root}/snap/svc/${DOLD}" "${root}/snap/svc/$(date +%F)" "${root}/backup"
+	make_stub "${root}/bin"
+	place "${root}/backup/t/svc/${DOLD}" received
+	echo "${DOLD}" >"${root}/snap/svc/.backed-up-t"
+	PATH="${root}/bin:${PATH}" SEND_LOG="${root}/send.log" BTRFS_SNAPSHOT_DIR="${root}/snap" \
+		BACKUP_ROOT="${root}/backup" RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" \
+		bash "${SCRIPT}" t >/dev/null 2>&1 || ok="run failed"
+	grep -q "send -q -p ${root}/snap/svc/${DOLD} " "${root}/send.log" 2>/dev/null || ok="no incremental send from ${DOLD}"
+	[[ "$(cat "${root}/snap/svc/.backed-up-t")" == "$(date +%F)" ]] || ok="marker not on today"
+	if [[ "${ok}" == ok ]]; then
+		PASS=$((PASS + 1)); echo "  PASS: a pinned old snapshot is the parent and the marker moves on"
+	else
+		FAIL=$((FAIL + 1)); echo "  FAIL: a pinned old snapshot is the parent and the marker moves on (${ok})"
+	fi
+	rm -rf "${root}"
+}
+
+run_incremental_case
 
 echo "=== btrfs-snapshot.sh ==="
 run_unmarked_case "pruning without a marker file deletes the old snapshot" none

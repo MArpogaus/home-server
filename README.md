@@ -220,9 +220,9 @@ dump of it from just before.
 - Each target in `base_setup_backup_targets` receives the snapshots with an
   incremental `btrfs send`. A target is fast to restore from, but the host can
   delete it. The host keeps the newest snapshot of each service that a target
-  holds, whatever its age, so the next send stays incremental. When you remove a target, delete
-  `.backed-up-<target>` in the snapshot directories; it keeps one snapshot per
-  service.
+  holds, whatever its age, so the next send stays incremental. When you remove
+  a target, delete `.backed-up-<target>` in the snapshot directories; it keeps
+  one snapshot per service.
 - With `base_setup_restic_repository` set, `restic-backup.timer` copies the
   newest snapshot of every service to a restic repository. restic encrypts,
   deduplicates and sends only the changes. The first run sends everything and
