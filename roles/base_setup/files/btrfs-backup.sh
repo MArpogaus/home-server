@@ -67,13 +67,15 @@ for src in "${SNAP_DIR}"/*/; do
 		else
 			btrfs send -q "${src}${latest}" | btrfs receive "${DEST}/${svc}" || true
 		fi
-		if ! received "${DEST}/${svc}/${latest}"; then
-			echo "ERROR: ${svc}/${latest} did not finish" >&2
-			refused=1
-			continue
-		fi
-		echo "Backed up ${svc}/${latest}"
 	fi
+	if ! received "${DEST}/${svc}/${latest}"; then
+		echo "ERROR: ${svc}/${latest} did not finish" >&2
+		refused=1
+		continue
+	fi
+	echo "${latest}" >"${src}.tmp.$$"
+	mv "${src}.tmp.$$" "${src}.backed-up-${TARGET}"
+	echo "${svc}/${latest} is on ${TARGET}."
 	copied=$((copied + 1))
 
 	for snap in "${DEST}/${svc}"/????-??-??; do

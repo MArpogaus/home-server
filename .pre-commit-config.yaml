@@ -37,5 +37,5 @@ repos:
         name: btrfs-backup.sh self-check
         entry: test/test_btrfs_backup.sh
         language: script
-        files: (btrfs-backup\.sh|test_btrfs_backup\.sh)$
+        files: (btrfs-backup\.sh|btrfs-snapshot\.sh|test_btrfs_backup\.sh)$
         pass_filenames: false
