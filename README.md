@@ -14,6 +14,7 @@ names every service version it deploys.
 | `home-server-bunker` | `services/bunker` | BunkerWeb reverse proxy (WAF, TLS) |
 | `home-server-monitoring` | `services/monitoring` | Metrics, logs, dashboards, alerts |
 | `home-server-ntfy` | `services/ntfy` | Push notifications, the alerts on the phone |
+| `home-server-dawarich` | `services/dawarich` | Dawarich, the location history of the phone |
 | `home-server-template` | anywhere | Skeleton for a new service |
 | `image-builder-action` | not cloned | GitHub Action that builds and signs the images |
 
@@ -170,6 +171,7 @@ out its full setup; two deployments may repeat the same value.
 | `bunker_service_sites` | yes | The proxy site of each public service, in the deployment directory |
 | `nextcloud_service_hostname` | yes | Nextcloud's public hostname |
 | `ntfy_service_hostname` | no | ntfy's public hostname; empty means no ntfy site |
+| `dawarich_service_hostname` | no | Dawarich's public hostname; empty means no Dawarich site |
 | Nextcloud passwords | yes | `home-server-nextcloud/README.md`, "Configuration" |
 | Monitoring credentials | yes | `home-server-monitoring/README.md`, "Configuration" |
 | `ntfy_service_users` | with ntfy | `home-server-ntfy/README.md`, "Configuration" |
