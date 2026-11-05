@@ -58,10 +58,10 @@ mkdir -p -m 700 ~/.config/home-server
 (umask 077; openssl rand -base64 48 > ~/.config/home-server/vault-password)
 ```
 
-The file `~/.config/home-server/vault-password` may itself be an executable
-script (shebang, `chmod +x`) that prints the password, for example one that
-runs `gpg --batch -q -d ...` with the key on a smartcard; every run then needs
-the card.
+The file `~/.config/home-server/vault-password` may be an executable script
+(shebang, `chmod +x`) that prints the password. One example runs
+`gpg --batch -q -d ...` with the key on a smartcard. Every run then needs the
+card.
 
 Every run names the `inventory.yml` of a deployment directory with `-i` and a
 host with `-l`:
@@ -176,13 +176,13 @@ out its full setup; two deployments may repeat the same value.
 | `monitoring_service_probe_urls` | on a real host | Public URLs that blackbox probes |
 | `bunker_service_certificates` | without public DNS | `self-signed` instead of Let's Encrypt |
 | `base_setup_backup_targets` | no | `uuid` and `name` of each target; `[]` means no backup target; the name `restic` is taken. A removed target keeps its `backup-<name>.prom`, so `JobStale` fires until you delete it |
-| `base_setup_btrfs_snapshot_retention_days` | no | Days a local snapshot stays; 30. A snapshot that a backup target still needs stays longer, see Backup |
+| `base_setup_btrfs_snapshot_retention_days` | no | Days a local snapshot stays; 30. A snapshot that a backup target still needs stays longer, see "Backup and restore" |
 | `base_setup_backup_retention_days` | no | Days a snapshot stays on a target; 90 |
 | `base_setup_luks_passphrase` | with a target | One passphrase for every target; keep a copy off the host |
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
 | `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
 | `base_setup_iscsi_replacement_timeout` | no | Seconds the host holds I/O while the target is gone before it fails it (600); applies from the next login |
-| `base_setup_iscsi_chap_user`, `base_setup_iscsi_chap_password` | no | CHAP login to the target; empty means none. Put the password in `vault.yml`. The deploy writes the values when it logs in. Enable CHAP on the target. On a host that is already logged in, run no backup, then stop `var-backup-<name>.automount`, `var-backup-<name>.mount` and `systemd-cryptsetup@backup-<name>.service`. Log out with `iscsiadm -m node -T <target> -p <portal> -u`, then deploy |
+| `base_setup_iscsi_chap_user`, `base_setup_iscsi_chap_password` | no | CHAP login to the target; empty means none. Put the password in `vault.yml`. The deploy writes the values when it logs in. Enable CHAP on the target. On a host that is already logged in, run `systemctl stop var-backup-<name>.automount var-backup-<name>.mount 'systemd-cryptsetup@backup\x2d<name>.service'`. Then log out with `iscsiadm -m node -T <target> -p <portal> -u` and deploy |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `base_setup_zram_size` | no | Size of the compressed swap in RAM, in zram-generator syntax; `min(ram / 2, 4096)` (MB). A change applies at the next boot |
