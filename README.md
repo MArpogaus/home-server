@@ -182,7 +182,7 @@ out its full setup; two deployments may repeat the same value.
 | `base_setup_iscsi_portal`, `base_setup_iscsi_target` | no | LUN 0 of an iSCSI target on port 3260; the deploy logs in to it |
 | `base_setup_iscsi_initiator` | no | The initiator name the target admits; by default it ends in the host name |
 | `base_setup_iscsi_replacement_timeout` | no | Seconds the host holds I/O while the target is gone before it fails it (600); applies from the next login |
-| `base_setup_iscsi_chap_user`, `base_setup_iscsi_chap_password` | no | CHAP login to the target; empty means none. Put the password in `vault.yml`. The deploy writes the values when it logs in. Enable CHAP on the target, then on a host that is already logged in run `iscsiadm -m node -T <target> -p <portal> -u`, then deploy |
+| `base_setup_iscsi_chap_user`, `base_setup_iscsi_chap_password` | no | CHAP login to the target; empty means none. Put the password in `vault.yml`. The deploy writes the values when it logs in. Enable CHAP on the target. On a host that is already logged in, run no backup, then stop `var-backup-<name>.automount`, `var-backup-<name>.mount` and `systemd-cryptsetup@backup-<name>.service`. Log out with `iscsiadm -m node -T <target> -p <portal> -u`, then deploy |
 | `base_setup_restic_repository`, `base_setup_restic_password` | no | A restic repository for the newest snapshots; empty means none |
 | `base_setup_restic_env` | with restic | The backend's settings, such as `RESTIC_REST_USERNAME` and `RESTIC_REST_PASSWORD` |
 | `base_setup_zram_size` | no | Size of the compressed swap in RAM, in zram-generator syntax; `min(ram / 2, 4096)` (MB). A change applies at the next boot |
@@ -221,10 +221,11 @@ dump of it from just before.
 - Each target in `base_setup_backup_targets` receives the snapshots with an
   incremental `btrfs send`. A target is fast to restore from, but the host can
   delete it. The host keeps the newest snapshot of each service that a target
-  holds, whatever its age, so the next send stays incremental. For each
-  target, the marker `/var/services/snapshots/<service>/.backed-up-<target>`
-  makes the host keep one snapshot per service. When you remove a target,
-  delete its markers. The next nightly snapshot run then frees the snapshots.
+  holds, whatever its age, so the next send stays incremental. The marker
+  `/var/services/snapshots/<service>/.backed-up-<target>` names that snapshot.
+  When you remove a target, run
+  `run0 rm /var/services/snapshots/*/.backed-up-<name>`. The next nightly
+  snapshot run then deletes the snapshots that are past the retention.
 - With `base_setup_restic_repository` set, `restic-backup.timer` copies the
   newest snapshot of every service to a restic repository. restic encrypts,
   deduplicates and sends only the changes. The first run sends everything and
@@ -419,9 +420,9 @@ Known gaps:
   monitoring service reads tokens that other units log.
 - A LAN device with a global IPv6 address stays reachable from the
   containers, because the egress rule cannot know the LAN's global prefix.
-- Without CHAP (`base_setup_iscsi_chap_user`), an iSCSI target admits any LAN device with this host's
-  initiator name.
-  LUKS stops it from reading the backups, not from overwriting them.
+- Without CHAP (`base_setup_iscsi_chap_user`), an iSCSI target admits any
+  LAN device with this host's initiator name. LUKS stops it from reading the
+  backups, not from overwriting them.
 
 SELinux exceptions:
 
