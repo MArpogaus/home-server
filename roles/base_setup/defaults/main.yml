@@ -18,6 +18,8 @@ base_setup_iscsi_portal: ""
 base_setup_iscsi_target: ""
 base_setup_iscsi_initiator: "iqn.2026-01.local.homeserver:{{ inventory_hostname }}"
 base_setup_iscsi_replacement_timeout: 600
+base_setup_iscsi_chap_user: ""
+base_setup_iscsi_chap_password: ""
 base_setup_luks_passphrase: ""
 
 base_setup_restic_repository: ""

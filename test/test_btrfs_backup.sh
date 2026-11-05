@@ -3,10 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="${SCRIPT_DIR}/../roles/base_setup/files/btrfs-backup.sh"
+SNAP_SCRIPT="${SCRIPT_DIR}/../roles/base_setup/files/btrfs-snapshot.sh"
 D1="$(date -d '-3 days' +%F)"
 D2="$(date -d '-2 days' +%F)"
 D3="$(date -d '-1 day' +%F)"
 DOLD="$(date -d '-100 days' +%F)"
+DOLD2="$(date -d '-101 days' +%F)"
+DOLD3="$(date -d '-102 days' +%F)"
 PASS=0
 FAIL=0
 
@@ -25,6 +28,10 @@ case "$1 $2" in
 		echo "	Received UUID: 		-"
 	fi
 	;;
+"subvolume snapshot")
+	mkdir -p "$5"
+	: >"$5/.subvol"
+	;;
 "subvolume delete")
 	d="$3"
 	[ -e "${d}/.subvol" ] || { echo "ERROR: not a subvolume" >&2; exit 1; }
@@ -32,6 +39,7 @@ case "$1 $2" in
 	;;
 "send -q")
 	for a in "$@"; do last="$a"; done
+	[ -z "${SEND_LOG:-}" ] || echo "$*" >>"${SEND_LOG}"
 	echo "SEND:${last}"
 	;;
 receive*)
@@ -155,6 +163,52 @@ setup_stale_source() {
 	place "$1/backup/t/svc/${DOLD}" received
 }
 
+run_marker_case() {
+	local desc="$1" setup="$2" want="$3" tgt="${4:-t}" root got=absent
+	root="$(mktemp -d)"
+	mkdir -p "${root}/bin" "${root}/snap" "${root}/backup"
+	make_stub "${root}/bin"
+	"${setup}" "${root}"
+	PATH="${root}/bin:${PATH}" BTRFS_SNAPSHOT_DIR="${root}/snap" BACKUP_ROOT="${root}/backup" \
+		RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" bash "${SCRIPT}" "${tgt}" >/dev/null 2>&1 || true
+	[[ -e "${root}/snap/svc/.backed-up-${tgt}" ]] && got="$(cat "${root}/snap/svc/.backed-up-${tgt}")"
+	if [[ "${got}" == "${want}" ]]; then
+		PASS=$((PASS + 1)); echo "  PASS: ${desc}"
+	else
+		FAIL=$((FAIL + 1)); echo "  FAIL: ${desc} (marker ${got}, want ${want})"
+	fi
+	rm -rf "${root}"
+}
+
+run_prune_case() {
+	local desc="$1" want_left="$2" want_gone="$3" root left gone
+	root="$(mktemp -d)"
+	mkdir -p "${root}/bin" "${root}/svc/svc" "${root}/snap/svc"
+	make_stub "${root}/bin"
+	for d in "${DOLD}" "${DOLD2}"; do place "${root}/snap/svc/${d}" received; done
+	echo "${DOLD}" >"${root}/snap/svc/.backed-up-t"
+	echo "${DOLD3}" >"${root}/snap/svc/.backed-up-u"
+	place "${root}/snap/svc/${DOLD3}" received
+	PATH="${root}/bin:${PATH}" BTRFS_SERVICES_DIR="${root}/svc" BTRFS_SNAPSHOT_DIR="${root}/snap" \
+		RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" bash "${SNAP_SCRIPT}" svc >/dev/null 2>&1 || true
+	left="$(find "${root}/snap/svc" -mindepth 1 -maxdepth 1 -type d -name '????-??-??' | wc -l)"
+	gone=ok
+	[[ -d "${root}/snap/svc/${DOLD2}" ]] && gone="${DOLD2} kept"
+	[[ -d "${root}/snap/svc/${DOLD}" && -d "${root}/snap/svc/${DOLD3}" ]] || gone="marked snapshot deleted"
+	[[ -d "${root}/snap/svc/$(date +%F)" ]] || gone="today missing"
+	if [[ "${left}" == "${want_left}" && "${gone}" == "${want_gone}" ]]; then
+		PASS=$((PASS + 1)); echo "  PASS: ${desc}"
+	else
+		FAIL=$((FAIL + 1)); echo "  FAIL: ${desc} (left ${left} want ${want_left}, ${gone})"
+	fi
+	rm -rf "${root}"
+}
+
+setup_marker_sent() { mkdir -p "$1/snap/svc/${D3}"; }
+setup_marker_failed() { mkdir -p "$1/snap/svc/${D3}" "$1/backup/t/svc"; : >"$1/backup/t/svc/.error"; }
+setup_marker_failed_old() { setup_marker_failed "$1"; echo "${D1}" >"$1/snap/svc/.backed-up-t"; }
+setup_marker_already() { mkdir -p "$1/snap/svc/${D3}"; place "$1/backup/t/svc/${D3}" received; }
+
 echo "=== btrfs-backup.sh ==="
 run_case "no snapshot at all fails the run"        1 0 setup_no_snapshots
 run_case "first sync sends one copy"               0 1 setup_first_sync
@@ -169,6 +223,59 @@ run_case "a failed receive does not stop the rest"  1 2 setup_failed_one_of_two 
 run_case "a named snapshot is not the latest"      0 1 setup_named_snapshot "${D3}"
 run_case "retention deletes an unreceivable leftover" 0 1 setup_field_gone_old_partial "${D3}"
 run_case "retention keeps the copy of the latest snapshot" 0 1 setup_stale_source "${DOLD}"
+run_marker_case "a verified send writes the marker" setup_marker_sent "${D3}"
+run_marker_case "a failed receive writes no marker" setup_marker_failed absent
+run_marker_case "an already backed up snapshot writes the marker" setup_marker_already "${D3}"
+
+run_marker_case "a failed receive keeps the older marker" setup_marker_failed_old "${D1}"
+run_marker_case "the marker is named after the target" setup_marker_sent "${D3}" nas2
+
+run_unmarked_case() {
+	local desc="$1" mode="$2" root ok=ok
+	root="$(mktemp -d)"
+	mkdir -p "${root}/bin" "${root}/svc/svc" "${root}/snap/svc"
+	make_stub "${root}/bin"
+	place "${root}/snap/svc/${DOLD}" received
+	[[ "${mode}" == empty ]] && : >"${root}/snap/svc/.backed-up-t"
+	PATH="${root}/bin:${PATH}" BTRFS_SERVICES_DIR="${root}/svc" BTRFS_SNAPSHOT_DIR="${root}/snap" \
+		RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" bash "${SNAP_SCRIPT}" svc >/dev/null 2>&1 || true
+	[[ -d "${root}/snap/svc/${DOLD}" ]] && ok="old snapshot kept"
+	[[ -d "${root}/snap/svc/$(date +%F)" ]] || ok="today missing"
+	[[ -e "${root}/snapshot-svc.prom" ]] || ok="no metric"
+	if [[ "${ok}" == ok ]]; then
+		PASS=$((PASS + 1)); echo "  PASS: ${desc}"
+	else
+		FAIL=$((FAIL + 1)); echo "  FAIL: ${desc} (${ok})"
+	fi
+	rm -rf "${root}"
+}
+
+run_incremental_case() {
+	local root ok=ok
+	root="$(mktemp -d)"
+	mkdir -p "${root}/bin" "${root}/snap/svc/${DOLD}" "${root}/snap/svc/$(date +%F)" "${root}/backup"
+	make_stub "${root}/bin"
+	place "${root}/backup/t/svc/${DOLD}" received
+	echo "${DOLD}" >"${root}/snap/svc/.backed-up-t"
+	PATH="${root}/bin:${PATH}" SEND_LOG="${root}/send.log" BTRFS_SNAPSHOT_DIR="${root}/snap" \
+		BACKUP_ROOT="${root}/backup" RETENTION_DAYS=90 NODE_TEXTFILE_DIR="${root}" \
+		bash "${SCRIPT}" t >/dev/null 2>&1 || ok="run failed"
+	grep -q "send -q -p ${root}/snap/svc/${DOLD} " "${root}/send.log" 2>/dev/null || ok="no incremental send from ${DOLD}"
+	[[ "$(cat "${root}/snap/svc/.backed-up-t")" == "$(date +%F)" ]] || ok="marker not on today"
+	if [[ "${ok}" == ok ]]; then
+		PASS=$((PASS + 1)); echo "  PASS: a pinned old snapshot is the parent and the marker moves on"
+	else
+		FAIL=$((FAIL + 1)); echo "  FAIL: a pinned old snapshot is the parent and the marker moves on (${ok})"
+	fi
+	rm -rf "${root}"
+}
+
+run_incremental_case
+
+echo "=== btrfs-snapshot.sh ==="
+run_unmarked_case "pruning without a marker file deletes the old snapshot" none
+run_unmarked_case "pruning with an empty marker file deletes the old snapshot" empty
+run_prune_case "pruning keeps every marked snapshot and deletes other old ones" 3 ok
 
 echo "=== ${PASS} passed, ${FAIL} failed ==="
 [[ "${FAIL}" -eq 0 ]]

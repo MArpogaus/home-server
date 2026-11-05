@@ -17,8 +17,12 @@ else
 	echo "Created snapshot: ${SNAPSHOT_DIR}/${TODAY}"
 fi
 
+keep="$(cat "${SNAPSHOT_DIR}"/.backed-up-* 2>/dev/null || true)"
 for snap in "${SNAPSHOT_DIR}"/????-??-??; do
 	[ -d "${snap}" ] || continue
+	if grep -qxF "$(basename "${snap}")" <<<"${keep}"; then
+		continue
+	fi
 	if [[ "$(basename "${snap}")" < "${CUTOFF}" ]]; then
 		btrfs subvolume delete "${snap}" || rm -rf "${snap}"
 		echo "Deleted snapshot: ${snap}"
