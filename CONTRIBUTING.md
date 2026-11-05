@@ -63,5 +63,5 @@ short sentences, one meaning per word, and the condition before the command.
   repositories and this one extend. Here it bumps the digests of the
   `coreos-installer` and `butane` images that `ignition/build.sh` and the
   download step in `README.md` pin.
-- A local hook runs `test/test_btrfs_backup.sh` when `btrfs-backup.sh` or the
-  test changes. `test/` also holds the VM harness.
+- A local hook runs `test/test_btrfs_backup.sh` when `btrfs-backup.sh`,
+  `btrfs-snapshot.sh` or the test changes. `test/` also holds the VM harness.

@@ -34,7 +34,7 @@ repos:
   - repo: local
     hooks:
       - id: test-btrfs-backup
-        name: btrfs-backup.sh self-check
+        name: btrfs-backup.sh and btrfs-snapshot.sh self-check
         entry: test/test_btrfs_backup.sh
         language: script
         files: (btrfs-backup\.sh|btrfs-snapshot\.sh|test_btrfs_backup\.sh)$
