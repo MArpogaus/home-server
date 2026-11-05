@@ -10,3 +10,6 @@
 [submodule "services/ntfy"]
 	path = services/ntfy
 	url = https://github.com/MArpogaus/home-server-ntfy.git
+[submodule "services/dawarich"]
+	path = services/dawarich
+	url = https://github.com/MArpogaus/home-server-dawarich.git
