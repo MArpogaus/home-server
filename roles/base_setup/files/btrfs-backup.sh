@@ -58,9 +58,7 @@ for src in "${SNAP_DIR}"/*/; do
 	latest="$(snapshots "${src}" | tail -n1)"
 	[ -n "${latest}" ] || continue
 
-	if [ -e "${DEST}/${svc}/${latest}" ]; then
-		echo "${svc}/${latest} already backed up."
-	else
+	if [ ! -e "${DEST}/${svc}/${latest}" ]; then
 		parent="$(comm -12 <(snapshots "${src}") <(received_snapshots "${DEST}/${svc}") | tail -n1)"
 		if [ -n "${parent}" ]; then
 			btrfs send -q -p "${src}${parent}" "${src}${latest}" | btrfs receive "${DEST}/${svc}" || true
