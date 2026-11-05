@@ -16,11 +16,16 @@
 - name: Apply the initiator name now
   ansible.builtin.meta: flush_handlers
 
+- name: Look for the target's node record
+  ansible.builtin.stat:
+    path: /var/lib/iscsi/nodes/{{ base_setup_iscsi_target }}
+  register: base_setup_iscsi_node_record
+
 - name: Discover the target, log in, and log in again at boot
   community.general.open_iscsi:
     portal: "{{ base_setup_iscsi_portal }}"
     target: "{{ base_setup_iscsi_target }}"
-    discover: true
+    discover: "{{ not base_setup_iscsi_node_record.stat.exists }}"
     login: true
     auto_node_startup: true
     node_user: "{{ base_setup_iscsi_chap_user | default(omit, true) }}"
